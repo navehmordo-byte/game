@@ -51,6 +51,10 @@ body {
 #hudTasks li.more::before { display: none; }
 #hud.mad #note { transform: rotate(-4deg) skewX(-3deg); }
 #hud.mad #hudTasks li.cur { color: var(--blood); }
+#hudRead { margin-top: calc(var(--u) * 6); font-size: calc(var(--u) * 12); opacity: .7; font-variant-numeric: tabular-nums; }
+#hudRead.all { opacity: 1; font-weight: 800; }
+#hud.heaven #note { background: #fffaf0; box-shadow: 0 0 calc(var(--u) * 30) rgba(255,220,140,.7); }
+#hud.hell #note { background: #3b0f0b; color: #f4c3b3; }
 
 /* dialog */
 #dialog {
@@ -174,6 +178,7 @@ body.portrait .days { font-size: 14px; }
       <div id="note">
         <div id="noteHead"><span id="hudDay">יום 1</span><span id="hudClock">07:00</span></div>
         <ol id="hudTasks"></ol>
+        <div id="hudRead"></div>
       </div>
     </div>
     <div id="mini" hidden>
@@ -203,7 +208,7 @@ body.portrait .days { font-size: 14px; }
       <div class="days" id="daySel" aria-label="קפיצה ליום"></div>
     </div>
     <div id="end" class="screen" hidden>
-      <h1>סוף</h1>
+      <h1 id="endTitle">סוף</h1>
       <p id="endText">ושוב. ושוב. ושוב.</p>
       <button class="go" id="againBtn" type="button">לקום שוב</button>
     </div>
@@ -250,6 +255,7 @@ const S = {
   player: { x: 290, dir: 1, walk: 0, moving: false, dressed: false },
   invertUntil: 0, nextInvert: 0, nextWhisper: 0, nextLaugh: 0, shakeBurst: 0, laughT: 0,
   input: INPUT0, camX: 0, autoWalk: null,
+  readLog: {}, realm: null, loop: false, zz: [],
 };
 const keys = { left: false, right: false };
 
@@ -389,6 +395,64 @@ const WHISPERS = {
   7: ['הא', 'הא הא', 'לצחצח שיניים', 'עוד פעם', 'הא', 'HELP', 'לישון', 'אני אתה', 'הא הא הא'],
 };
 
+// ---------------------------------------------------------------- day 9: heaven or hell
+// Heaven only if the player noticed (interacted with) every object and person on every day, 1 through 8.
+const REALM = {
+  heaven: {
+    name: 'גן עדן',
+    fx: { sat: .8, con: .95, hue: 0, noise: 0, glitch: 0, shake: 0, vig: .1 },
+    wake: ['השעון המעורר מצלצל... כמו פעמונים.', 'אני מרגיש קל. כל כך קל.', 'בוקר טוב.'],
+    tasks: {
+      brushAM: ['המים בכיור חמימים ונעימים.', 'ההשתקפות שלי מחייכת אליי.'],
+      dress: ['בארון תלויה חליפה לבנה.', 'היא בדיוק במידה שלי.'],
+      toWork: ['האוטובוס שט בין העננים.', 'הנהג אמר לי בוקר טוב. בשם שלי.'],
+      work: ['העבודה הלכה לי בקלות.', 'דני הביא לי קפה בלי שביקשתי.'],
+      goHome: ['השקיעה כאן לא נגמרת.', 'במובן הטוב.'],
+      eat: ['במקרר יש בדיוק את מה שבא לי.'],
+      dinner: ['פסטה. הכי טעימה שאכלתי אי פעם.', 'הכיסא השני ריק, אבל אני לא מרגיש לבד.'],
+      brushPM: ['ההשתקפות שלי מנופפת לי לילה טוב.'],
+    },
+    flavor: {
+      bed: ['המיטה רכה כמו ענן.', 'כי היא ענן.'], picture: ['בתמונה יש נוף. אני מכיר אותו.', 'אני גר בו עכשיו.'],
+      sink: ['אני נראה טוב. נח.'], fridge: ['לא רעב. אבל תודה.'], cooler: ['המים כאן טעימים במיוחד.'],
+      dani: ['דני: איזה כיף שאתה פה!', 'דני: תמיד הקשבת לי. אף פעם לא אמרתי לך תודה.'],
+      yael: ['יעל: הדוח? שלחת אותו מזמן.', 'יעל: תנוח קצת.'],
+      moshe: ['משה: שמעתי שעצרת לדבר עם כולם שם למטה.', 'משה: זה לא מובן מאליו.'],
+    },
+  },
+  hell: {
+    name: 'גיהנום',
+    fx: { sat: 1.3, con: 1.25, hue: 0, noise: .06, glitch: .006, shake: .4, vig: .78 },
+    wake: ['השעון המעורר צורח.', 'חם פה. חם מדי.', 'עוד יום. לנצח.'],
+    tasks: {
+      brushAM: ['המים בכיור רותחים.', 'ההשתקפות שלי לא מסתכלת עליי בכלל.'],
+      dress: ['החליפה שרופה בקצוות.', 'היא לא מתאימה. היא אף פעם לא תתאים.'],
+      toWork: ['האוטובוס עובר דרך האש.', 'אף אחד לא מדבר. אף אחד לא מסתכל עליי.'],
+      work: ['הקלדתי. הכול נמחק.', 'אני אצטרך לעשות את זה שוב מחר. ומחר. ומחר.'],
+      goHome: ['אין פה שקיעה.', 'יש רק אדום.'],
+      eat: ['המקרר מלא אפר.'],
+      dinner: ['הצלחת ריקה.', 'גם מחר היא תהיה ריקה.'],
+      brushPM: ['הכיור מלא עשן.', 'לא שמתי לב לאף אחד. עכשיו אף אחד לא שם לב אליי.'],
+    },
+    flavor: {
+      bed: ['המיטה חמה. לא בצורה נעימה.'], picture: ['התמונה שרופה.'], sink: ['אני לא מזהה את עצמי.'],
+      fridge: ['אפר.'], cooler: ['המכל ריק.', 'הוא תמיד היה ריק.'],
+      dani: ['דני: ...', '(הוא לא מסתכל עליי. גם אני אף פעם לא באמת דיברתי איתו.)'],
+      yael: ['יעל: מי אתה?'], moshe: ['משה: אתה לא זוכר אותי, נכון?', 'משה: אף פעם לא שאלת.'],
+    },
+  },
+};
+function judge() {
+  for (let d = 1; d <= 8; d++) { const r = S.readLog[d]; if (!r || r.read.size < r.total) return 'hell'; }
+  return 'heaven';
+}
+// what heaven and hell do to anyone drawn in them
+function realmLook(p) {
+  if (S.realm === 'heaven') return Object.assign({}, p, { halo: true, smile: true, grin: false, faceless: false, eyesWide: false });
+  if (S.realm === 'hell') return Object.assign({}, p, { horns: true, skin: '#b8322a', grin: true, smile: false });
+  return p;
+}
+
 const FX = {
   1: { sat: 1, con: 1, hue: 0, noise: 0, glitch: 0, shake: 0, vig: .22 },
   2: { sat: .86, con: 1, hue: 0, noise: .02, glitch: 0, shake: 0, vig: .3 },
@@ -516,6 +580,9 @@ const sfx = {
       noise(.1, .05, 1100, 'bandpass', i * .19);
     }
   },
+  soul() { tone(196, 7, 'sine', .05, 0, 784); tone(294, 7, 'sine', .03, .4, 1175); },
+  chime() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 1.8, 'sine', .035, i * .14)); },
+  sob() { buzz([120, 80, 120]); for (let i = 0; i < 3; i++) { tone(rand(380, 450), .38, 'triangle', .05, i * .4, 240); noise(.3, .03, 900, 'bandpass', i * .4); } },
   crack() { buzz([300, 80, 500]); noise(.6, .5, 900); noise(1.4, .2, 200, 'lowpass', .05); },
 };
 
@@ -529,6 +596,8 @@ function text(c, s, x, y, size, color, align = 'center', font = 'Heebo') {
 }
 
 function sky() {
+  if (S.realm === 'heaven') return ['#fff8e6', '#ffe1a8'];
+  if (S.realm === 'hell') return ['#1a0000', '#a8200a'];
   if (S.day === 7) return ['#22000a', '#7d0b16'];
   if (S.day === 6) return ['#5a0c0c', '#d84a2a'];
   return { morning: ['#8fc6ea', '#f6d9b0'], day: ['#5aa6e0', '#c4e4f7'], sunset: ['#4b5a9c', '#f08c52'], night: ['#0a0f2c', '#283062'] }[S.time];
@@ -562,7 +631,10 @@ function drawWindow(c, x, y, w, h, figure) {
 
 function look() {
   const p = S.player;
-  return { dir: p.dir, walk: p.walk, pajamas: !p.dressed, suit: p.dressed, grin: S.day === 7 && S.laughT > 0 };
+  const L = { dir: p.dir, walk: p.walk, pajamas: !p.dressed, suit: p.dressed, grin: S.day === 7 && S.laughT > 0 };
+  if (S.realm === 'heaven') Object.assign(L, { halo: true, smile: true });
+  if (S.realm === 'hell') Object.assign(L, { sad: true, skin: '#cfa99b' });
+  return L;
 }
 
 function drawPerson(c, x, o = {}) {
@@ -602,11 +674,20 @@ function drawPerson(c, x, o = {}) {
       circle(c, 6, cy - 2, 3.4, '#fff'); circle(c, 12.5, cy - 2, 3.4, '#fff');
       circle(c, 7, cy - 2, 1.4, '#000'); circle(c, 13.5, cy - 2, 1.4, '#000');
     } else { rect(c, 5, cy - 4, 2.4, 3.4, '#1a1a1a'); rect(c, 11.5, cy - 4, 2.4, 3.4, '#1a1a1a'); }
+    c.strokeStyle = '#7a3e2e'; c.lineWidth = 1.8;
     if (o.grin) {
       c.fillStyle = '#3a0808'; c.beginPath(); c.arc(9, cy + 4, 6, 0, Math.PI); c.fill();
       rect(c, 4, cy + 4, 10, 2, '#fff');
-    } else rect(c, 7, cy + 6, 7, 1.6, '#7a3e2e');
+    } else if (o.smile) { c.beginPath(); c.arc(9, cy + 3, 5, .15 * Math.PI, .85 * Math.PI); c.stroke(); }
+    else if (o.sad) { c.beginPath(); c.arc(9, cy + 11, 5, 1.2 * Math.PI, 1.8 * Math.PI); c.stroke(); }
+    else rect(c, 7, cy + 6, 7, 1.6, '#7a3e2e');
   }
+  if (o.horns) {
+    c.fillStyle = '#4a0606';
+    c.beginPath(); c.moveTo(-7, cy - 10); c.lineTo(-4, cy - 25); c.lineTo(0, cy - 12); c.fill();
+    c.beginPath(); c.moveTo(6, cy - 12); c.lineTo(11, cy - 26); c.lineTo(13, cy - 9); c.fill();
+  }
+  if (o.halo) { c.strokeStyle = '#ffcf4a'; c.lineWidth = 3; c.beginPath(); c.ellipse(2, cy - 23, 12, 4, 0, 0, Math.PI * 2); c.stroke(); }
   c.restore();
 }
 
@@ -621,7 +702,7 @@ function drawChair(c, x, dir = 1, spin = 0) {
 }
 function drawWorkstation(c, x, person, opts = {}) {
   drawChair(c, x - 28, 1, opts.spin);
-  if (person) drawPerson(c, x - 28, Object.assign({ sit: true }, person));
+  if (person) drawPerson(c, x - 28, realmLook(Object.assign({ sit: true }, person)));
   rect(c, x - 14, FLOOR - 80, 96, 10, '#8a6d4f');
   rect(c, x - 10, FLOOR - 70, 6, 70, '#6b5139'); rect(c, x + 72, FLOOR - 70, 6, 70, '#6b5139');
   rect(c, x + 16, FLOOR - 136, 56, 40, '#222'); rect(c, x + 40, FLOOR - 96, 8, 16, '#333');
@@ -743,7 +824,7 @@ function drawBus(c) {
     else if (d === 4) p = { shirt: '#777', eyesWide: true, dir: x < 480 ? 1 : -1 };
     else if (d === 5) p = i === 1 || i === 3 ? { shirt: '#666', faceless: true } : null;
     else if (d === 7) p = { suit: true, grin: true, dir: x < 480 ? 1 : -1 };
-    if (p) drawPerson(c, x - 10, Object.assign({ sit: true, dir: 1 }, p));
+    if (p) drawPerson(c, x - 10, realmLook(Object.assign({ sit: true, dir: 1 }, p)));
   });
   drawPerson(c, 470, Object.assign(look(), { sit: true, walk: 0, dir: 1 }));
   c.restore();
@@ -940,6 +1021,7 @@ let cssFilter = '';
 // day 8's ending slides the effects from day 1 to day 7 as S.flags.ramp goes 0 → 1
 const rampE = () => S.flags.ramp == null ? 0 : S.flags.ramp * S.flags.ramp;
 function currentFx() {
+  if (S.realm && S.mode !== 'title') return REALM[S.realm].fx;
   if (S.flags.ramp == null) return FX[S.mode === 'title' ? 1 : S.day];
   const e = rampE(), a = FX[1], b = FX[7], o = {};
   for (const k in a) o[k] = a[k] + (b[k] - a[k]) * e;
@@ -948,7 +1030,7 @@ function currentFx() {
 function applyCssFilter() {
   const f = currentFx();
   const hue = (S.day === 7 && S.mode !== 'title') || rampE() > .55 ? (S.t * 40) % 360 : f.hue;
-  const s = `saturate(${f.sat}) contrast(${f.con}) hue-rotate(${hue.toFixed(0)}deg)`;
+  const s = `saturate(${f.sat}) contrast(${f.con}) hue-rotate(${hue.toFixed(0)}deg)` + (S.realm === 'heaven' && S.mode !== 'title' ? ' brightness(1.08)' : '');
   if (s !== cssFilter) { cv.style.filter = s; cssFilter = s; }
 }
 
@@ -970,11 +1052,12 @@ function render() {
     for (const o of S.objs) if (o.scene === S.scene) drawObj(c, o);
     if (S.scene === 'street') for (const n of S.npcs) {
       if (n.copy) drawPerson(c, n.x, { suit: true, grin: true, eyesWide: true, dir: S.player.x < n.x ? -1 : 1, walk: n.walk });
-      else drawPerson(c, n.x, { shirt: n.shirt, walk: n.walk, dir: n.stand ? (S.player.x < n.x ? -1 : 1) : (d === 5 ? -Math.sign(n.v) : Math.sign(n.v)), faceless: d === 5, eyesWide: n.stand });
+      else drawPerson(c, n.x, realmLook({ shirt: n.shirt, walk: n.walk, dir: n.stand ? (S.player.x < n.x ? -1 : 1) : (d === 5 ? -Math.sign(n.v) : Math.sign(n.v)), faceless: d === 5, eyesWide: n.stand }));
     }
     if (S.mode !== 'title') {
       const p = S.player;
       if (S.flags.asleep) drawSleeper(c, e); else drawPerson(c, p.x, look());
+      if (S.flags.ghost) drawGhost(c);
       if (S.laughT > 0) text(c, 'הא הא הא', p.x + rand(-2, 2), FLOOR - 140 + rand(-2, 2), 18, '#ff4a3a', 'center', 'Karantina');
       if (S.mode === 'play' && !S.dialog) {
         const h = hintObj(); if (h && h.scene === S.scene) drawArrow(c, h);
@@ -982,9 +1065,11 @@ function render() {
       }
     }
   }
+  if (S.realm && S.mode !== 'title') drawRealmFloor(c, camX);
   c.restore();
+  if (S.realm && S.mode !== 'title') drawRealmSky(c);
   // night tint
-  if (S.time === 'night' && S.scene !== 'bus' && d < 6) { c.fillStyle = 'rgba(15,20,55,.28)'; c.fillRect(0, 0, W, H); }
+  if (S.time === 'night' && S.scene !== 'bus' && d < 6 && S.realm !== 'heaven') { c.fillStyle = 'rgba(15,20,55,.28)'; c.fillRect(0, 0, W, H); }
   if (S.scene === 'office' && (S.flags.officeEmpty || d >= 5) && Math.random() < .06) { c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, 0, W, H); }
   if (S.flags.flicker > 0 && Math.random() < .5) { c.fillStyle = 'rgba(0,0,0,.7)'; c.fillRect(0, 0, W, H); }
   // day 8: the house starts to blink out, rarely at first
@@ -1015,13 +1100,61 @@ function render() {
 function drawSleeper(c, e) {
   const b = obj('bed'), x0 = b.x - b.w / 2;
   c.save(); c.translate(x0 + 150, FLOOR - 88); c.rotate(-Math.PI / 2);
-  drawPerson(c, 0, { y: 0, pajamas: true, dir: 1, eyesWide: e > .3, grin: e > .7 });
+  drawPerson(c, 0, Object.assign({ y: 0, pajamas: true, dir: 1, eyesWide: e > .3, grin: e > .7 },
+    S.realm === 'heaven' ? { halo: true, smile: true } : S.realm === 'hell' ? { sad: true, skin: '#cfa99b' } : {}));
   c.restore();
+  if (S.flags.crying) for (let i = 0; i < 3; i++) {
+    const ph = (S.t * .9 + i / 3) % 1;
+    c.save(); c.globalAlpha = 1 - ph * .7;
+    c.fillStyle = '#5ab8ff'; c.beginPath(); c.ellipse(x0 + 47 - i * 4, FLOOR - 96 + ph * 22, 3.2, 4.6, 0, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+  if (S.flags.crying) text(c, 'בוכה...', x0 + 70, FLOOR - 128 + Math.sin(S.t * 3) * 2, 22, '#5ab8ff', 'center', 'Karantina');
+  if (S.flags.crying) { c.fillStyle = 'rgba(90,184,255,.35)'; c.beginPath(); c.ellipse(x0 + 44, FLOOR - 76, 16, 4, 0, 0, Math.PI * 2); c.fill(); }
   rr(c, x0 + 72, FLOOR - 98, b.w - 76, 30, 7, '#4a6fa5');
   for (const z of S.zz) {
     c.save(); c.globalAlpha = Math.max(0, 1 - z.age / z.life);
     text(c, z.txt, z.x + Math.sin(z.age * 2.4 + z.seed) * 10, z.y, z.size, z.odd ? '#d8261c' : '#1d2b52', 'center', 'Karantina');
     c.restore();
+  }
+}
+// day 8 → 9: the soul lifts out of the body, stands up and floats away
+function drawGhost(c) {
+  const g = S.flags.ghost, b = obj('bed'), x0 = b.x - b.w / 2, t = g.t;
+  const rise = Math.min(t, 2) * 18, k = clamp((t - 2) / 1.5, 0, 1), fly = Math.max(0, t - 5) * 70;
+  const cx = x0 + 93 + k * 30, cy = FLOOR - 88 - rise - fly + Math.sin(S.t * 2) * 3;
+  const glow = c.createRadialGradient(cx, cy, 4, cx, cy, 110);
+  glow.addColorStop(0, 'rgba(220,240,255,.45)'); glow.addColorStop(1, 'rgba(220,240,255,0)');
+  c.fillStyle = glow; c.fillRect(cx - 110, cy - 110, 220, 220);
+  c.save(); c.globalAlpha = .6; c.translate(cx, cy); c.rotate(-Math.PI / 2 * (1 - k));
+  drawPerson(c, 0, { y: 57, dir: 1, skin: '#eaf6ff', shirt: '#ffffff', pants: '#dcecff', hair: '#cfe3ff' });
+  c.restore();
+}
+function drawRealmFloor(c, camX) {
+  if (S.realm === 'heaven') {
+    for (let x = Math.floor(camX / 70) * 70 - 70; x < camX + W + 70; x += 70) {
+      const bob = Math.sin(S.t + x * .05) * 3;
+      circle(c, x, H - 18 + bob, 46, 'rgba(255,255,255,.92)'); circle(c, x + 35, H - 40 + bob, 34, 'rgba(255,255,255,.85)');
+    }
+  } else {
+    for (let x = Math.floor(camX / 26) * 26 - 26; x < camX + W + 26; x += 26) {
+      const h = 34 + Math.sin(S.t * 9 + x * .7) * 12 + Math.sin(S.t * 5.3 + x) * 6;
+      c.fillStyle = 'rgba(255,90,0,.85)'; c.beginPath(); c.moveTo(x, H); c.lineTo(x + 13, H - h); c.lineTo(x + 26, H); c.fill();
+      c.fillStyle = 'rgba(255,210,60,.8)'; c.beginPath(); c.moveTo(x + 6, H); c.lineTo(x + 13, H - h * .5); c.lineTo(x + 20, H); c.fill();
+    }
+  }
+}
+function drawRealmSky(c) {
+  if (S.realm === 'heaven') {
+    c.fillStyle = 'rgba(255,236,190,.16)'; c.fillRect(0, 0, W, H);
+    c.fillStyle = 'rgba(255,255,255,.07)';
+    for (let i = 0; i < 4; i++) { const x = 120 + i * 230 + Math.sin(S.t * .3 + i) * 20; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 70, 0); c.lineTo(x + 190, H); c.lineTo(x + 40, H); c.fill(); }
+  } else {
+    c.fillStyle = 'rgba(160,20,0,.22)'; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 26; i++) {
+      const x = (i * 173 + Math.sin(S.t * .8 + i) * 30) % W, y = H - ((S.t * (30 + i % 5 * 9) + i * 53) % H);
+      circle(c, x, y, 1.6 + i % 3, `rgba(255,${120 + i % 4 * 30},40,.75)`);
+    }
   }
 }
 const CRACK = [];
@@ -1043,6 +1176,7 @@ function drawCrack(c) {
 // ---------------------------------------------------------------- HUD & UI
 function fmtClock() {
   const c = S.clock, d = S.day, [h, m] = c.split(':');
+  if (S.realm === 'hell') return '66:66';
   if (d === 2) return h + ':' + String(+m + (+m < 40 ? 60 : 0)).padStart(2, '0');
   if (d === 5) return '??:??';
   if (d === 6) return c.split('').reverse().join('');
@@ -1064,7 +1198,18 @@ function updateHUD() {
     ol.appendChild(li);
   });
   if (to < S.tasks.length) dots();
-  $('hud').classList.toggle('mad', S.day >= 6);
+  $('hud').classList.toggle('mad', S.day >= 6 && !S.realm);
+  $('hud').classList.toggle('heaven', S.realm === 'heaven');
+  $('hud').classList.toggle('hell', S.realm === 'hell');
+  updateRead();
+}
+// how many of today's objects and people the player has stopped to look at
+function updateRead() {
+  const r = S.readLog[shownDay()], el = $('hudRead');
+  el.hidden = !!S.realm || !r;
+  if (el.hidden) return;
+  el.textContent = `שמתי לב: ${r.read.size}/${r.total}`;
+  el.classList.toggle('all', r.read.size >= r.total);
 }
 let lastClock = '';
 function tickHUD() {
@@ -1236,6 +1381,7 @@ async function travel(o) {
 
 function flavor(o) {
   const d = S.day;
+  if (S.realm) { const F = REALM[S.realm].flavor[o.id] || REALM[S.realm].flavor[o.type]; if (F) return F; }
   if (['yael', 'dani', 'moshe'].includes(o.id)) {
     if (S.flags.officeEmpty) return ['הכיסא מסתובב.', 'אין פה אף אחד.'];
     if (o.id === 'moshe' && d >= 3 && d < 7) return ['שולחן ריק.', 'מי ישב פה?', '...אף אחד, כנראה.'];
@@ -1297,12 +1443,12 @@ async function doTask(t) {
   TIMEFX[t.key]?.();
   if (t.key === 'dress') S.player.dressed = true;
   updateHUD(); sfx.ding();
-  const lines = (TEXT[t.key] || {})[S.day];
+  const lines = S.realm ? REALM[S.realm].tasks[t.key] : (TEXT[t.key] || {})[S.day];
   const hook = (HOOKS[S.day] || {})[t.key];
   if (hook) await hook(lines);
   else if (t.key === 'toWork') await ride('office', lines);
   else if (t.key === 'goHome') await ride('home', lines);
-  else if (t.key === 'sleep') { if (S.day === 7) return finale(); if (S.loop) return loopEnding(); if (lines) await say(lines); return nextDay(); }
+  else if (t.key === 'sleep') { if (S.day === 7) return finale(); if (S.realm) return realmEnding(); if (S.loop) return loopEnding(); if (lines) await say(lines); return nextDay(); }
   else if (lines) await say(lines);
   S.mode = 'play';
 }
@@ -1310,6 +1456,8 @@ async function doTask(t) {
 async function tryInteract() {
   const o = nearObj(); if (!o) return;
   S.mode = 'cut'; S.autoWalk = null;
+  const log = !S.realm && S.readLog[shownDay()];
+  if (log) { log.read.add(o.id); updateRead(); }
   try {
     const t = curTask();
     if (t && t.obj === o.id) return await doTask(t);
@@ -1319,23 +1467,24 @@ async function tryInteract() {
 }
 
 // day 8 replays day 1 underneath (S.loop), only the number on screen says 8
-const shownDay = () => S.loop ? 8 : S.day;
+const shownDay = () => S.realm ? 9 : S.loop ? 8 : S.day;
 const WAKE_LOOP = ['בררר! השעון המעורר.', 'איזה חלום מוזר היה לי.', 'טוב. עוד יום רגיל.'];
 async function startDay(n, opts) {
   S.mode = 'cut';
-  S.loop = !!(opts && opts.loop); S.zz = [];
+  S.loop = !!(opts && opts.loop); S.realm = (opts && opts.realm) || null; S.zz = [];
   S.day = n; S.tasks = makeTasks(n); S.idx = 0; S.scene = 'home'; S.time = 'morning'; setClock('07:00');
   S.flags = {}; S.objs = buildObjects(n); S.npcs = makeNpcs(n); S.hist = []; S.laughT = 0; S.autoWalk = null;
   Object.assign(S.player, { x: 290, dir: 1, walk: 0, dressed: false });
   S.invertUntil = 0; S.nextInvert = S.t + 10; S.nextWhisper = S.t + 6; S.nextLaugh = S.t + 8;
   CRACK.length = 0;
   $('fade').style.transitionDuration = '0ms'; $('fade').style.opacity = 1;
-  $('hud').hidden = false; updateHUD(); setDrone(n);
+  if (!S.realm) S.readLog[shownDay()] = { read: new Set(), total: S.objs.filter(o => o.name).length };
+  $('hud').hidden = false; updateHUD(); setDrone(S.realm ? 0 : n);
   await wait(300);
-  await card('יום ' + shownDay(), S.loop ? 'עוד יום רגיל.' : SUB[n], 2300);
+  await card('יום ' + shownDay(), S.realm ? REALM[S.realm].name : S.loop ? 'עוד יום רגיל.' : SUB[n], 2300);
   await fadeIn(900);
   sfx.alarm();
-  await say((S.loop ? WAKE_LOOP : WAKE[n]).map(l => l !== 'HINT' ? l : S.input === 'touch'
+  await say((S.realm ? REALM[S.realm].wake : S.loop ? WAKE_LOOP : WAKE[n]).map(l => l !== 'HINT' ? l : S.input === 'touch'
     ? '(◀ ▶ כדי ללכת, ✋ כדי לעשות דברים. אפשר גם פשוט לגעת בדברים על המסך)'
     : '(חיצים כדי ללכת, E כדי לעשות דברים)'));
   S.mode = 'play';
@@ -1380,9 +1529,40 @@ async function loopEnding() {
   setDrone(0);
   $('fade').style.transitionDuration = '0ms'; $('fade').style.opacity = 1;
   S.shakeBurst = 0; $('hud').hidden = true;
-  await wait(1200);
-  sfx.alarm();
-  await card('יום 1', 'עוד יום רגיל.', 2800);
+  await soulLeaves();
+}
+
+async function soulLeaves() {
+  S.flags.ramp = null; S.flags.crack = false; CRACK.length = 0; S.zz = []; S.flags.dead = true;
+  await wait(1400);
+  await fadeIn(1800);
+  await say(['...', 'שקט.', 'אין יותר גליצ\'ים.']);
+  S.flags.ghost = { t: 0 }; sfx.soul();
+  await wait(2400);
+  await say(['זה הגוף שלי.', 'ואני... יוצא ממנו.']);
+  while (S.flags.ghost.t < 8.5) await wait(100);
+  await fadeOut(1500);
+  const realm = judge();
+  await card('', realm === 'heaven' ? 'עצרת. הקשבת לכולם. שמת לב לכל דבר.' : 'עברת ליד יותר מדי דברים בלי לעצור.', 3400);
+  await startDay(1, { realm });
+}
+
+// day 9 bedtime: a happy sleep in heaven, crying in hell
+async function realmEnding() {
+  S.mode = 'cut';
+  const good = S.realm === 'heaven';
+  await say(good ? ['איזה יום טוב היה.', 'אני כל כך שמח.', 'לילה טוב.'] : ['אני רוצה הביתה.', '...', 'זה כן הבית.']);
+  await fadeOut(900);
+  S.player.x = obj('bed').x; S.flags.asleep = true; S.zz = []; S.flags.zzT = 0; S.flags.breathT = 0;
+  if (!good) S.flags.crying = true;
+  await fadeIn(1400);
+  await wait(6500);
+  await fadeOut(1800);
+  $('hud').hidden = true;
+  const title = good ? 'הסוף הטוב' : 'הסוף הרע';
+  const line = good ? 'הוא ישן. בפעם הראשונה, באמת ישן.' : 'מחר הוא יקום. ויעשה את זה שוב. ושוב.';
+  await card(title, line, 3600);
+  $('endTitle').textContent = title; $('endText').textContent = line;
   S.mode = 'end';
   try { localStorage.setItem('seven-days-done', '1'); } catch (e) {}
   $('daySel').hidden = false;
@@ -1428,7 +1608,18 @@ function update(dt) {
     if (n.copy) { const tx = p.x + n.off, dd = tx - n.x; if (Math.abs(dd) > 4) { n.x += Math.sign(dd) * Math.min(Math.abs(dd), 70 * dt); n.walk += dt * 8; } }
     else if (n.v) { n.x += n.v * dt; n.walk += dt * 9; if (n.x < -60) n.x = 1860; if (n.x > 1860) n.x = -60; }
   }
-  if (S.flags.asleep) {
+  if (S.flags.ghost && !S.dialog) S.flags.ghost.t += dt;
+  if (S.flags.asleep && S.realm) {
+    if ((S.flags.breathT -= dt) <= 0) { if (S.flags.crying) sfx.sob(); else sfx.chime(); S.flags.breathT = S.flags.crying ? 1.8 : 2.2; }
+    if (!S.flags.crying && (S.flags.zzT -= dt) <= 0) {
+      const b = obj('bed'), heart = Math.random() < .4, n = S.zz.length;
+      S.zz.push({ x: b.x - b.w / 2 + 60, y: FLOOR - 112, age: 0, life: 3.6, seed: rand(0, 6), odd: heart,
+        txt: heart ? '♥' : ['z', 'Z', 'Z'][n % 3], size: heart ? 30 : [24, 34, 46][n % 3] });
+      S.flags.zzT = 1;
+    }
+    for (const z of S.zz) { z.age += dt; z.y -= dt * 20; z.x += dt * 6; }
+    S.zz = S.zz.filter(z => z.age < z.life);
+  } else if (S.flags.asleep && !S.flags.dead) {
     const r = S.flags.ramp;
     if (r != null && r < 1) { S.flags.ramp = Math.min(1, r + dt / 15); setDrone(1 + 6 * rampE()); }
     if (r > 0 && Math.random() < r * dt * 1.6) { sfx.glitch(); if (r > .5 && Math.random() < .3) spawnWhisper('הא'); }
@@ -1576,19 +1767,23 @@ function applyInputMode() {
 function begin(day) {
   initAudio();
   $('title').hidden = true; $('end').hidden = true;
-  if (day === 8) startDay(1, { loop: true }); else startDay(day);
+  S.readLog = {};
+  if (day === 'heaven' || day === 'hell') startDay(1, { realm: day });
+  else if (day === 9) startDay(1, { realm: judge() });
+  else if (day === 8) startDay(1, { loop: true }); else startDay(day);
 }
 $('startBtn').addEventListener('click', () => begin(1));
 $('againBtn').addEventListener('click', () => begin(1));
-for (let i = 1; i <= 8; i++) {
-  const b = document.createElement('button'); b.type = 'button'; b.textContent = 'יום ' + i;
+[1, 2, 3, 4, 5, 6, 7, 8, 'heaven', 'hell'].forEach(i => {
+  const b = document.createElement('button'); b.type = 'button';
+  b.textContent = i === 'heaven' ? 'יום 9: גן עדן' : i === 'hell' ? 'יום 9: גיהנום' : 'יום ' + i;
   b.addEventListener('click', () => begin(i));
   $('daySel').appendChild(b);
-}
+});
 // the day picker is a shortcut for replaying; show it only after the game was finished once, or with #days
 let unlocked = false;
 try { unlocked = localStorage.getItem('seven-days-done') === '1'; } catch (e) {}
-const hashDay = /^#?day([1-8])$/.exec(location.hash);
+const hashDay = /^#?day([1-9])$/.exec(location.hash) || /^#?(heaven|hell)$/.exec(location.hash);
 $('daySel').hidden = !(unlocked || location.hash === '#days' || hashDay);
 
 // Portrait phones: the game sits on top, the to-do note, dialog and mini games move into
@@ -1640,8 +1835,8 @@ applyInputMode();
 S.objs = buildObjects(1); S.npcs = makeNpcs(1); S.player.x = 480;
 $('fade').style.opacity = 0;
 requestAnimationFrame(loop);
-if (hashDay) begin(+hashDay[1]);
-window.G = { S, startDay, begin, doTask, curTask, setInput };
+if (hashDay) begin(isNaN(hashDay[1]) ? hashDay[1] : +hashDay[1]);
+window.G = { S, startDay, begin, doTask, curTask, setInput, judge };
 </script>
 </body>
 </html>
