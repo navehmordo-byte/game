@@ -39,7 +39,7 @@ body {
   transform: rotate(1.5deg); box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 14) rgba(0,0,0,.45);
   transition: transform .6s;
 }
-#noteHead { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--display); font-size: calc(var(--u) * 30); line-height: 1; border-bottom: calc(var(--u) * 2) solid rgba(44,37,18,.35); padding-bottom: calc(var(--u) * 4); }
+#noteHead { display: flex; gap: calc(var(--u) * 12); justify-content: space-between; align-items: baseline; font-family: var(--display); font-size: calc(var(--u) * 30); line-height: 1; border-bottom: calc(var(--u) * 2) solid rgba(44,37,18,.35); padding-bottom: calc(var(--u) * 4); }
 #hudClock { font-family: var(--body); font-weight: 800; font-size: calc(var(--u) * 15); font-variant-numeric: tabular-nums; letter-spacing: .04em; direction: ltr; }
 #hudTasks { list-style: none; margin: calc(var(--u) * 6) 0 0; padding: 0; display: grid; gap: calc(var(--u) * 2); font-size: calc(var(--u) * 15); }
 #hudTasks li { position: relative; padding-right: calc(var(--u) * 18); line-height: 1.35; opacity: .55; }
@@ -109,11 +109,59 @@ button.go:focus-visible { outline: 3px solid var(--paper); outline-offset: 4px; 
 .days button { font: inherit; background: transparent; color: var(--muted); border: 1px solid rgba(241,233,216,.25); padding: 2px 10px; cursor: pointer; }
 .days button:hover, .days button:focus-visible { color: var(--paper); border-color: var(--paper); }
 
-/* touch controls */
-#touch { position: absolute; inset: auto 0 0 0; display: none; justify-content: space-between; padding: calc(var(--u) * 12); pointer-events: none; }
-#touch.on { display: flex; }
-#touch button { pointer-events: auto; width: calc(var(--u) * 78); height: calc(var(--u) * 78); border-radius: 50%; border: 2px solid rgba(241,233,216,.4); background: rgba(12,11,10,.45); color: var(--paper); font-size: calc(var(--u) * 30); font-weight: 800; font-family: var(--body); touch-action: none; }
-#touch .pair { display: flex; gap: calc(var(--u) * 12); direction: ltr; }
+/* touch letter keys for the work mini game */
+#miniPad { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(var(--u) * 10); margin-top: calc(var(--u) * 12); direction: ltr; }
+#miniPad button { font-family: var(--body); font-weight: 800; font-size: calc(var(--u) * 30); min-height: 52px; background: rgba(241,233,216,.08); color: var(--paper); border: 1px solid rgba(241,233,216,.35); border-bottom-width: 4px; touch-action: none; }
+#miniPad button:active { background: var(--note); color: var(--note-ink); }
+
+/* input-specific copy: .k-keys for keyboard players, .k-touch for touch players */
+body.touch .k-keys, body:not(.touch) .k-touch { display: none !important; }
+button.ghost { font-family: var(--body); font-size: 15px; background: transparent; color: var(--paper); border: 1px solid rgba(241,233,216,.4); padding: 6px 14px; cursor: pointer; }
+
+/* touch controls: hidden on keyboard devices, corner overlay in landscape, a pad under the game in portrait */
+#touch { display: none; }
+#side { display: none; }
+body.touch #wrap { padding: 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px); touch-action: none; }
+body.touch #touch {
+  display: flex; position: absolute; inset: auto 0 0 0; justify-content: space-between; align-items: flex-end;
+  padding: 12px calc(14px + env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) calc(14px + env(safe-area-inset-left, 0px));
+  pointer-events: none;
+}
+#touch button {
+  pointer-events: auto; width: 68px; height: 68px; border-radius: 50%; border: 2px solid rgba(241,233,216,.45);
+  background: rgba(12,11,10,.5); color: var(--paper); font-size: 26px; font-weight: 800; font-family: var(--body); touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#touch button.held, #touch button:active { background: var(--note); color: var(--note-ink); }
+#touch #tAct { width: 76px; height: 76px; }
+#touch .pair { display: flex; gap: 12px; direction: ltr; }
+#rotateHint { display: none; }
+/* landscape phones: dialog goes to the top-left so the corner buttons stay clear */
+body.touch:not(.portrait) #dialog { top: calc(var(--u) * 14); bottom: auto; left: calc(var(--u) * 14); transform: none; width: calc(100% - var(--u) * 222); min-height: 0; }
+
+body.portrait #wrap { flex-direction: column; justify-content: flex-start; align-items: stretch; padding-top: env(safe-area-inset-top, 0px); }
+body.portrait #game { align-self: center; flex: none; }
+body.portrait #side {
+  --u: .9px; display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow-y: auto;
+  padding-block: 14px 8px; padding-inline: 16px; touch-action: pan-y;
+}
+body.portrait #side #hud, body.portrait #side #dialog, body.portrait #side #mini { position: static; transform: none; width: auto; min-width: 0; }
+body.portrait #side #hud { align-self: flex-start; max-width: 70%; }
+body.portrait #side #note { --u: .78px; transform: rotate(-1deg); }
+body.portrait.in-mini #side #hud { display: none; }
+body.portrait #side #mini { padding: 12px 16px; }
+body.portrait #side #dialog { min-height: 0; position: relative; left: auto; bottom: auto; padding-bottom: 26px; }
+body.portrait #touch { position: static; flex-wrap: wrap; row-gap: 10px; padding-block: 8px calc(18px + env(safe-area-inset-bottom, 0px)); padding-inline: 22px; align-items: center; }
+body.portrait #touch button { width: 80px; height: 80px; font-size: 30px; }
+body.portrait #touch #tAct { width: 92px; height: 92px; }
+body.portrait #rotateHint { display: block; order: -1; flex-basis: 100%; font-size: 13px; color: var(--muted); text-align: center; }
+body.portrait #wrap > .screen { position: absolute; inset: 0; background: rgba(8,7,6,.94); z-index: 5; }
+body.portrait .screen h1 { font-size: 76px; }
+body.portrait .screen p { font-size: 16px; }
+body.portrait .keys { font-size: 15px; }
+body.portrait button.go { font-size: 36px; padding: 10px 30px 6px; }
+body.portrait .days { font-size: 14px; }
+#cardS { font-size: max(13px, calc(var(--u) * 20)); }
 @media (prefers-reduced-motion: reduce) { #whispers span { animation-duration: 4s; } }
 </style>
 </head>
@@ -133,31 +181,40 @@ button.go:focus-visible { outline: 3px solid var(--paper); outline-offset: 4px; 
       <div id="miniKey"></div>
       <div id="miniHelp"></div>
       <div class="bar"><i id="miniBar"></i></div>
+      <div id="miniPad" hidden></div>
     </div>
-    <div id="dialog" hidden><span id="dialogText"></span><span class="more">E ▸</span></div>
+    <div id="dialog" hidden><span id="dialogText"></span><span class="more"><span class="k-keys">E ▸</span><span class="k-touch">נגיעה ▸</span></span></div>
     <div id="big"></div>
-    <div id="touch">
-      <button id="tAct" type="button" aria-label="פעולה">E</button>
-      <div class="pair">
-        <button id="tLeft" type="button" aria-label="שמאלה">◀</button>
-        <button id="tRight" type="button" aria-label="ימינה">▶</button>
-      </div>
-    </div>
     <div id="fade"><div id="cardBox"><div id="cardT"></div><div id="cardS"></div></div></div>
     <div id="title" class="screen">
       <h1>שבעה ימים</h1>
       <p>אתה איש רגיל. יש לך שגרה. מצחצחים שיניים, מתלבשים, הולכים לעבודה, חוזרים, אוכלים, ישנים. ושוב.</p>
-      <div class="keys">
+      <div class="keys k-keys">
         <span><kbd>←</kbd><kbd>→</kbd> או <kbd>A</kbd><kbd>D</kbd> ללכת</span>
         <span><kbd>E</kbd> או <kbd>רווח</kbd> לעשות דברים</span>
       </div>
+      <div class="keys k-touch">
+        <span><kbd>◀</kbd><kbd>▶</kbd> ללכת</span>
+        <span><kbd>✋</kbd> לעשות דברים</span>
+        <span>או פשוט לגעת במה שרוצים על המסך</span>
+      </div>
       <button class="go" id="startBtn" type="button">להתחיל את היום</button>
+      <button class="ghost k-touch" id="fsBtn" type="button">מסך מלא</button>
       <div class="days" id="daySel" aria-label="קפיצה ליום"></div>
     </div>
     <div id="end" class="screen" hidden>
       <h1>סוף</h1>
       <p id="endText">ביום השמיני השעון המעורר צלצל, וצלצל, וצלצל.</p>
       <button class="go" id="againBtn" type="button">לקום שוב</button>
+    </div>
+  </div>
+  <div id="side"></div>
+  <div id="touch">
+    <button id="tAct" type="button" aria-label="פעולה">✋</button>
+    <div id="rotateHint">סובבו את הטלפון לרוחב בשביל מסך גדול יותר</div>
+    <div class="pair">
+      <button id="tLeft" type="button" aria-label="שמאלה">◀</button>
+      <button id="tRight" type="button" aria-label="ימינה">▶</button>
     </div>
   </div>
 </div>
@@ -167,10 +224,21 @@ button.go:focus-visible { outline: 3px solid var(--paper); outline-offset: 4px; 
 // ================================================================
 //  שבעה ימים — a 2D routine that slowly falls apart
 // ================================================================
-const W = 960, H = 540, FLOOR = 440, SCALE = 2, SPEED = 250;
+const W = 960, H = 540, FLOOR = 440, SPEED = 250;
 const $ = id => document.getElementById(id);
+
+// ---------------------------------------------------------------- device detection
+// A phone or tablet (coarse pointer, or a touch screen with no mouse) starts in touch mode.
+// Real input switches it later: a key press means a keyboard, a finger on the screen means touch.
+function detectInput() {
+  const mq = q => window.matchMedia && matchMedia(q).matches;
+  const touchScreen = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window;
+  return mq('(pointer: coarse)') || (touchScreen && !mq('(any-pointer: fine)')) ? 'touch' : 'keys';
+}
+const INPUT0 = detectInput();
+const SCALE = INPUT0 === 'touch' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 2;
 const cv = $('cv'), ctx = cv.getContext('2d');
-cv.width = W * SCALE; cv.height = H * SCALE;
+cv.width = Math.round(W * SCALE); cv.height = Math.round(H * SCALE);
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -181,6 +249,7 @@ const S = {
   flags: {}, objs: [], npcs: [], t: 0, busT: 0, hist: [], dialog: null, mini: null,
   player: { x: 290, dir: 1, walk: 0, moving: false, dressed: false },
   invertUntil: 0, nextInvert: 0, nextWhisper: 0, nextLaugh: 0, shakeBurst: 0, laughT: 0,
+  input: INPUT0, camX: 0, autoWalk: null,
 };
 const keys = { left: false, right: false };
 
@@ -197,7 +266,7 @@ const SUB = {
 };
 
 const WAKE = {
-  1: ['בררר! השעון המעורר.', 'עוד יום מתחיל. קודם כל לצחצח שיניים.', '(חיצים כדי ללכת, E כדי לעשות דברים)'],
+  1: ['בררר! השעון המעורר.', 'עוד יום מתחיל. קודם כל לצחצח שיניים.', 'HINT'],
   2: ['השעון המעורר צלצל.', '...או שחלמתי שהוא צלצל?'],
   3: ['התעוררתי עייף.', 'כאילו לא ישנתי בכלל.'],
   4: ['שמעתי מישהו קורא בשם שלי.', 'אני גר לבד.'],
@@ -428,23 +497,26 @@ function noise(dur, vol, freq, type = 'bandpass', delay = 0) {
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   s.connect(f); f.connect(g); g.connect(AU.master); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
 }
+// short vibration on phones for the scary moments (ignored where unsupported)
+function buzz(p) { if (S.input === 'touch' && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
 const sfx = {
   alarm() { for (let i = 0; i < 6; i++) tone(i % 2 ? 1046 : 880, .12, 'square', .05, i * .17); },
   ding() { tone(1320, .3, 'sine', .05); tone(1760, .3, 'sine', .03, .08); },
-  glitch() { noise(.25, .25, rand(600, 4000)); tone(rand(80, 800), .2, 'square', .05, 0, rand(60, 2000)); },
+  glitch() { buzz(40); noise(.25, .25, rand(600, 4000)); tone(rand(80, 800), .2, 'square', .05, 0, rand(60, 2000)); },
   brush() { noise(.07, .1, 3200, 'highpass'); },
   click() { noise(.03, .12, 2200); },
   err() { tone(140, .15, 'square', .06); },
   door() { tone(110, .18, 'triangle', .12); noise(.12, .08, 500); },
   bus() { noise(1.6, .07, 140, 'lowpass'); },
   laugh(n = 6) {
+    buzz(Array.from({ length: n }, () => [60, 130]).flat());
     for (let i = 0; i < n; i++) {
       const f = rand(170, S.day === 7 ? 340 : 240);
       tone(f, .14, 'sawtooth', .07, i * .19, f * .7);
       noise(.1, .05, 1100, 'bandpass', i * .19);
     }
   },
-  crack() { noise(.6, .5, 900); noise(1.4, .2, 200, 'lowpass', .05); },
+  crack() { buzz([300, 80, 500]); noise(.6, .5, 900); noise(1.4, .2, 200, 'lowpass', .05); },
 };
 
 // ---------------------------------------------------------------- drawing helpers
@@ -825,7 +897,8 @@ function drawPrompt(c, o) {
   const w = c.measureText(label).width + 44, y = top - 30;
   rr(c, o.x - w / 2, y - 14, w, 28, 6, 'rgba(12,11,10,.85)');
   rr(c, o.x + w / 2 - 26, y - 10, 20, 20, 4, '#fbe98f');
-  text(c, 'E', o.x + w / 2 - 16, y + 1, 13, '#2c2512');
+  if (S.input === 'touch') circle(c, o.x + w / 2 - 16, y, 5, '#2c2512');
+  else text(c, 'E', o.x + w / 2 - 16, y + 1, 13, '#2c2512');
   text(c, label, o.x + w / 2 - 34, y + 1, 15, '#f1e9d8', 'right');
 }
 function drawArrow(c, o) {
@@ -879,7 +952,7 @@ function render() {
   c.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   c.clearRect(0, 0, W, H);
   const sc = SCENES[S.scene];
-  const camX = clamp(S.player.x - W / 2, 0, sc.w - W);
+  const camX = S.camX = clamp(S.player.x - W / 2, 0, sc.w - W);
   const sh = f.shake + (S.shakeBurst > 0 ? 9 : 0);
   c.save();
   c.translate(-camX + (sh ? rand(-sh, sh) : 0), sh ? rand(-sh, sh) : 0);
@@ -912,7 +985,7 @@ function render() {
   c.fillStyle = g; c.fillRect(0, 0, W, H);
   // noise
   if (f.noise) {
-    if (frame % 3 === 0) refreshNoise();
+    if (frame % (S.input === 'touch' ? 4 : 3) === 0) refreshNoise();
     c.save(); c.globalAlpha = f.noise; c.globalCompositeOperation = 'overlay'; c.imageSmoothingEnabled = false;
     c.drawImage(noiseCv, 0, 0, W, H); c.restore();
   }
@@ -957,7 +1030,8 @@ function updateHUD() {
   $('hudDay').textContent = 'יום ' + S.day;
   const ol = $('hudTasks'); ol.innerHTML = '';
   // the note only fits a few lines: the last finished task, the current one and what comes next
-  const from = Math.max(0, S.idx - 1), to = Math.min(S.tasks.length, from + 5);
+  const rows = document.body.classList.contains('portrait') ? 3 : 5;
+  const from = Math.max(0, S.idx - 1), to = Math.min(S.tasks.length, from + rows);
   const dots = () => { const li = document.createElement('li'); li.className = 'more'; li.textContent = '···'; ol.appendChild(li); };
   if (from > 0) dots();
   S.tasks.slice(from, to).forEach((t, j) => {
@@ -1030,7 +1104,7 @@ function runMini(kind) {
       m.seq = d === 6 ? 'WAKEUP' : d === 7 ? 'HELPME' : Array.from({ length: d >= 5 ? 9 : 6 }, () => 'ASDFJKL'[Math.floor(Math.random() * 7)]).join('');
       m.need = m.seq.length;
     }
-    S.mini = m; S.mode = 'mini'; $('mini').hidden = false; renderMini();
+    S.mini = m; S.mode = 'mini'; $('mini').hidden = false; document.body.classList.add('in-mini'); renderMini();
   });
 }
 function renderMini() {
@@ -1046,8 +1120,26 @@ function renderMini() {
   } else {
     [...m.seq].forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch; s.className = i < m.n ? 'd' : i === m.n ? 'n' : ''; k.appendChild(s); });
   }
-  $('miniHelp').textContent = brush ? 'ימינה ושמאלה לסירוגין (חיצים, A/D, או E)' : 'הקלידו את האותיות לפי הסדר (מקלדת באנגלית)';
+  const touch = S.input === 'touch';
+  $('miniHelp').textContent = brush
+    ? (touch ? 'לחצו ◀ ▶ לסירוגין, או החליקו על המסך ימינה ושמאלה' : 'ימינה ושמאלה לסירוגין (חיצים, A/D, או E)')
+    : (touch ? 'לחצו על האות הבאה' : 'הקלידו את האותיות לפי הסדר (מקלדת באנגלית)');
   $('miniBar').style.width = (m.n / m.need * 100) + '%';
+  // on touch screens the work game gets four big letter keys: the right one and three decoys
+  const pad = $('miniPad');
+  pad.hidden = brush || !touch || m.n >= m.need;
+  if (pad.hidden) return;
+  if (m.optsFor !== m.n) {
+    const want = m.seq[m.n];
+    const decoys = [...new Set(('ASDFJKL' + m.seq).split(''))].filter(ch => ch !== want).sort(() => Math.random() - .5).slice(0, 3);
+    m.opts = [want, ...decoys].sort(() => Math.random() - .5); m.optsFor = m.n;
+  }
+  pad.innerHTML = '';
+  m.opts.forEach(ch => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = ch;
+    b.addEventListener('pointerdown', e => { e.preventDefault(); miniInput('Key' + ch); });
+    pad.appendChild(b);
+  });
 }
 function miniInput(code) {
   const m = S.mini; if (!m) return;
@@ -1057,12 +1149,12 @@ function miniInput(code) {
     m.last = k; m.n++; sfx.brush();
   } else {
     const want = m.seq[m.n];
-    if (code === 'act' || code === 'Key' + want) { m.n++; sfx.click(); }
+    if (code === 'Key' + want) { m.n++; sfx.click(); }
     else if (/^Key/.test(code)) { sfx.err(); const el = $('mini'); el.classList.remove('err'); void el.offsetWidth; el.classList.add('err'); return; }
     else return;
   }
   renderMini();
-  if (m.n >= m.need) { S.mini = null; $('mini').hidden = true; m.res(); }
+  if (m.n >= m.need) { S.mini = null; $('mini').hidden = true; $('miniPad').hidden = true; document.body.classList.remove('in-mini'); m.res(); }
 }
 
 // ---------------------------------------------------------------- flow
@@ -1078,7 +1170,7 @@ function targetScene() { const t = curTask(); return t ? (obj(t.obj) || {}).scen
 
 async function goTo(scene, x, dir) {
   sfx.door(); await fadeOut(350);
-  S.scene = scene; S.player.x = x; S.player.dir = dir; S.hist = [];
+  S.scene = scene; S.player.x = x; S.player.dir = dir; S.hist = []; S.autoWalk = null;
   await fadeIn(350);
 }
 async function ride(dest, lines) {
@@ -1194,7 +1286,7 @@ async function doTask(t) {
 
 async function tryInteract() {
   const o = nearObj(); if (!o) return;
-  S.mode = 'cut';
+  S.mode = 'cut'; S.autoWalk = null;
   try {
     const t = curTask();
     if (t && t.obj === o.id) return await doTask(t);
@@ -1206,7 +1298,7 @@ async function tryInteract() {
 async function startDay(n) {
   S.mode = 'cut';
   S.day = n; S.tasks = makeTasks(n); S.idx = 0; S.scene = 'home'; S.time = 'morning'; setClock('07:00');
-  S.flags = {}; S.objs = buildObjects(n); S.npcs = makeNpcs(n); S.hist = []; S.laughT = 0;
+  S.flags = {}; S.objs = buildObjects(n); S.npcs = makeNpcs(n); S.hist = []; S.laughT = 0; S.autoWalk = null;
   Object.assign(S.player, { x: 290, dir: 1, walk: 0, dressed: false });
   S.invertUntil = 0; S.nextInvert = S.t + 10; S.nextWhisper = S.t + 6; S.nextLaugh = S.t + 8;
   CRACK.length = 0;
@@ -1216,7 +1308,9 @@ async function startDay(n) {
   await card('יום ' + n, SUB[n], 2300);
   await fadeIn(900);
   sfx.alarm();
-  await say(WAKE[n]);
+  await say(WAKE[n].map(l => l !== 'HINT' ? l : S.input === 'touch'
+    ? '(◀ ▶ כדי ללכת, ✋ כדי לעשות דברים. אפשר גם פשוט לגעת בדברים על המסך)'
+    : '(חיצים כדי ללכת, E כדי לעשות דברים)'));
   S.mode = 'play';
 }
 async function nextDay() { await fadeOut(1400); await startDay(S.day + 1); }
@@ -1264,6 +1358,15 @@ function update(dt) {
   if (S.mode === 'play' && !S.dialog) {
     let dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
     if (S.t < S.invertUntil) dx = -dx;
+    if (dx) S.autoWalk = null;
+    else if (S.autoWalk) {
+      // tap-to-walk: head for the tapped spot or object, and use the object on arrival
+      const A = S.autoWalk, tx = A.obj ? A.obj.x : A.x;
+      const arrived = A.obj ? nearObj() === A.obj && Math.abs(p.x - tx) < A.obj.w / 2 : Math.abs(p.x - tx) < 6;
+      if (A.obj && A.obj.scene !== S.scene) S.autoWalk = null;
+      else if (arrived || (A.obj && Math.abs(p.x - tx) < 6)) { S.autoWalk = null; if (A.obj && nearObj() === A.obj) tryInteract(); }
+      else dx = Math.sign(tx - p.x);
+    }
     if (dx) {
       const sp = SPEED * (d === 7 ? 1 + Math.sin(S.t * 3) * .35 : 1);
       p.x = clamp(p.x + dx * sp * dt, 40, SCENES[S.scene].w - 40);
@@ -1319,6 +1422,7 @@ addEventListener('keydown', e => {
   const c = e.code;
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(c)) e.preventDefault();
   initAudio();
+  if (!e.repeat && c !== 'Unidentified') setInput('keys');
   if (S.mode === 'title' || S.mode === 'end') return;
   if (S.mini && !S.dialog) {
     if (e.repeat) return;
@@ -1341,17 +1445,68 @@ $('dialog').addEventListener('click', () => advanceDialog());
 
 function bindHold(id, side) {
   const el = $(id);
+  const release = () => { keys[side] = false; el.classList.remove('held'); };
   el.addEventListener('pointerdown', e => {
     e.preventDefault(); initAudio();
+    if (e.pointerType === 'touch') setInput('touch');
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+    el.classList.add('held');
     if (S.mini) { miniInput(side); return; }
-    keys[side] = true;
+    keys[side] = true; S.autoWalk = null;
   });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => { keys[side] = false; }));
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => el.addEventListener(ev, release));
 }
 bindHold('tLeft', 'left'); bindHold('tRight', 'right');
-$('tAct').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); action(); });
-addEventListener('touchstart', () => $('touch').classList.add('on'), { once: true, passive: true });
-if (matchMedia('(pointer: coarse)').matches) $('touch').classList.add('on');
+$('tAct').addEventListener('pointerdown', e => {
+  e.preventDefault(); initAudio();
+  if (e.pointerType === 'touch') setInput('touch');
+  action();
+});
+// no long-press menus or double-tap zoom on the controls
+$('touch').addEventListener('contextmenu', e => e.preventDefault());
+
+// tapping the game: advance dialog, swipe to brush, or walk to (and use) whatever was tapped
+let swipe = null;
+cv.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'touch') setInput('touch');
+  initAudio();
+  if (S.dialog) { advanceDialog(); return; }
+  if (S.mini) { if (S.mini.kind === 'brush') swipe = { x: e.clientX }; return; }
+  if (S.mode !== 'play') return;
+  const r = cv.getBoundingClientRect();
+  const wx = S.camX + (e.clientX - r.left) / r.width * W;
+  let hit = null, bd = 1e9;
+  for (const o of S.objs) {
+    if (o.scene !== S.scene || !o.name) continue;
+    const dd = Math.abs(wx - o.x);
+    if (dd < o.w / 2 + 12 && dd < bd) { hit = o; bd = dd; }
+  }
+  if (hit && nearObj() === hit) { S.autoWalk = null; tryInteract(); return; }
+  S.autoWalk = { x: hit ? hit.x : wx, obj: hit };
+});
+cv.addEventListener('pointermove', e => {
+  if (!swipe || !S.mini || S.mini.kind !== 'brush') return;
+  const dx = e.clientX - swipe.x;
+  if (Math.abs(dx) > 22) { miniInput(dx < 0 ? 'left' : 'right'); swipe.x = e.clientX; }
+});
+addEventListener('pointerup', () => { swipe = null; });
+addEventListener('pointercancel', () => { swipe = null; });
+
+// switch between keyboard and touch as the player actually uses them
+addEventListener('pointerdown', e => { if (e.pointerType === 'touch') setInput('touch'); }, true);
+function setInput(mode) {
+  if (S.input === mode) return;
+  S.input = mode;
+  if (mode === 'keys') S.autoWalk = null;
+  applyInputMode();
+}
+function applyInputMode() {
+  document.body.classList.toggle('touch', S.input === 'touch');
+  keys.left = keys.right = false;
+  resize();
+  if (S.mini) renderMini();
+  if (S.tasks.length) updateHUD();
+}
 
 // ---------------------------------------------------------------- screens & boot
 function begin(day) {
@@ -1372,22 +1527,57 @@ try { unlocked = localStorage.getItem('seven-days-done') === '1'; } catch (e) {}
 const hashDay = /^#?day([1-7])$/.exec(location.hash);
 $('daySel').hidden = !(unlocked || location.hash === '#days' || hashDay);
 
+// Portrait phones: the game sits on top, the to-do note, dialog and mini games move into
+// the space below it, and the controls get their own pad at the bottom.
+function layout() {
+  const portrait = S.input === 'touch' && innerHeight > innerWidth;
+  const body = document.body, game = $('game'), side = $('side'), wrap = $('wrap');
+  const was = body.classList.contains('portrait');
+  body.classList.toggle('portrait', portrait);
+  if (portrait === was && layout.done) return;
+  layout.done = true;
+  if (S.tasks.length) setTimeout(updateHUD);
+  if (portrait) {
+    ['hud', 'mini', 'dialog'].forEach(id => side.appendChild($(id)));
+    ['title', 'end'].forEach(id => wrap.appendChild($(id)));
+  } else {
+    ['hud', 'mini', 'dialog'].forEach(id => game.insertBefore($(id), $('big')));
+    ['title', 'end'].forEach(id => game.appendChild($(id)));
+  }
+}
 function resize() {
+  layout();
   const wrap = $('wrap'), cs = getComputedStyle(wrap);
   const aw = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  const ah = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-  const w = Math.min(aw, ah * 16 / 9);
+  let ah = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  if (document.body.classList.contains('portrait')) ah = Math.max(120, Math.min(ah * .45, ah - 330));
+  const w = Math.max(0, Math.min(aw, ah * 16 / 9));
   const g = $('game'); g.style.width = w + 'px'; g.style.height = (w * 9 / 16) + 'px';
   g.style.setProperty('--u', (w / 960) + 'px');
 }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 200));
+if (window.visualViewport) visualViewport.addEventListener('resize', resize);
+
+// optional fullscreen + landscape lock for phones; both may be refused, the game works either way
+$('fsBtn').addEventListener('click', () => {
+  const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return;
+  try {
+    Promise.resolve(req.call(el)).then(() => {
+      if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+    }).catch(() => {});
+  } catch (e) {}
+});
+if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) $('fsBtn').hidden = true;
+applyInputMode();
 
 // title backdrop: an ordinary morning
 S.objs = buildObjects(1); S.npcs = makeNpcs(1); S.player.x = 480;
 $('fade').style.opacity = 0;
 requestAnimationFrame(loop);
 if (hashDay) begin(+hashDay[1]);
-window.G = { S, startDay, begin, doTask, curTask };
+window.G = { S, startDay, begin, doTask, curTask, setInput };
 </script>
 </body>
 </html>
