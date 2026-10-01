@@ -204,7 +204,7 @@ body.portrait .days { font-size: 14px; }
     </div>
     <div id="end" class="screen" hidden>
       <h1>סוף</h1>
-      <p id="endText">ביום השמיני השעון המעורר צלצל, וצלצל, וצלצל.</p>
+      <p id="endText">ושוב. ושוב. ושוב.</p>
       <button class="go" id="againBtn" type="button">לקום שוב</button>
     </div>
   </div>
@@ -937,9 +937,17 @@ function refreshNoise() {
   nctx.putImageData(nImg, 0, 0);
 }
 let cssFilter = '';
+// day 8's ending slides the effects from day 1 to day 7 as S.flags.ramp goes 0 → 1
+const rampE = () => S.flags.ramp == null ? 0 : S.flags.ramp * S.flags.ramp;
+function currentFx() {
+  if (S.flags.ramp == null) return FX[S.mode === 'title' ? 1 : S.day];
+  const e = rampE(), a = FX[1], b = FX[7], o = {};
+  for (const k in a) o[k] = a[k] + (b[k] - a[k]) * e;
+  return o;
+}
 function applyCssFilter() {
-  const f = FX[S.mode === 'title' ? 1 : S.day];
-  const hue = S.day === 7 && S.mode !== 'title' ? (S.t * 40) % 360 : f.hue;
+  const f = currentFx();
+  const hue = (S.day === 7 && S.mode !== 'title') || rampE() > .55 ? (S.t * 40) % 360 : f.hue;
   const s = `saturate(${f.sat}) contrast(${f.con}) hue-rotate(${hue.toFixed(0)}deg)`;
   if (s !== cssFilter) { cv.style.filter = s; cssFilter = s; }
 }
@@ -947,7 +955,7 @@ function applyCssFilter() {
 // ---------------------------------------------------------------- render
 let frame = 0;
 function render() {
-  const d = S.mode === 'title' ? 1 : S.day, f = FX[d], c = ctx;
+  const d = S.mode === 'title' ? 1 : S.day, f = currentFx(), c = ctx, e = rampE();
   frame++;
   c.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   c.clearRect(0, 0, W, H);
@@ -956,7 +964,7 @@ function render() {
   const sh = f.shake + (S.shakeBurst > 0 ? 9 : 0);
   c.save();
   c.translate(-camX + (sh ? rand(-sh, sh) : 0), sh ? rand(-sh, sh) : 0);
-  if (d === 7 && S.mode !== 'title') { const k = Math.sin(S.t * 1.3) * .035; c.transform(1, 0, k, 1, -k * FLOOR, 0); }
+  if ((d === 7 && S.mode !== 'title') || e > .4) { const k = Math.sin(S.t * 1.3) * .035 * (d === 7 ? 1 : (e - .4) / .6); c.transform(1, 0, k, 1, -k * FLOOR, 0); }
   sc.draw(c, camX);
   if (S.scene !== 'bus') {
     for (const o of S.objs) if (o.scene === S.scene) drawObj(c, o);
@@ -966,7 +974,7 @@ function render() {
     }
     if (S.mode !== 'title') {
       const p = S.player;
-      drawPerson(c, p.x, look());
+      if (S.flags.asleep) drawSleeper(c, e); else drawPerson(c, p.x, look());
       if (S.laughT > 0) text(c, 'הא הא הא', p.x + rand(-2, 2), FLOOR - 140 + rand(-2, 2), 18, '#ff4a3a', 'center', 'Karantina');
       if (S.mode === 'play' && !S.dialog) {
         const h = hintObj(); if (h && h.scene === S.scene) drawArrow(c, h);
@@ -979,6 +987,8 @@ function render() {
   if (S.time === 'night' && S.scene !== 'bus' && d < 6) { c.fillStyle = 'rgba(15,20,55,.28)'; c.fillRect(0, 0, W, H); }
   if (S.scene === 'office' && (S.flags.officeEmpty || d >= 5) && Math.random() < .06) { c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, 0, W, H); }
   if (S.flags.flicker > 0 && Math.random() < .5) { c.fillStyle = 'rgba(0,0,0,.7)'; c.fillRect(0, 0, W, H); }
+  // day 8: the house starts to blink out, rarely at first
+  if (S.flags.ramp > 0 && Math.random() < .015 + S.flags.ramp * .14) { c.fillStyle = `rgba(0,0,0,${rand(.5, .95)})`; c.fillRect(0, 0, W, H); }
   // vignette
   const g = c.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, W * .65);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${f.vig})`);
@@ -1000,6 +1010,19 @@ function render() {
   }
   if (S.flags.crack) drawCrack(c);
   applyCssFilter();
+}
+// the man asleep in bed on day 8, with Zzz drifting up
+function drawSleeper(c, e) {
+  const b = obj('bed'), x0 = b.x - b.w / 2;
+  c.save(); c.translate(x0 + 150, FLOOR - 88); c.rotate(-Math.PI / 2);
+  drawPerson(c, 0, { y: 0, pajamas: true, dir: 1, eyesWide: e > .3, grin: e > .7 });
+  c.restore();
+  rr(c, x0 + 72, FLOOR - 98, b.w - 76, 30, 7, '#4a6fa5');
+  for (const z of S.zz) {
+    c.save(); c.globalAlpha = Math.max(0, 1 - z.age / z.life);
+    text(c, z.txt, z.x + Math.sin(z.age * 2.4 + z.seed) * 10, z.y, z.size, z.odd ? '#d8261c' : '#1d2b52', 'center', 'Karantina');
+    c.restore();
+  }
 }
 const CRACK = [];
 function drawCrack(c) {
@@ -1027,7 +1050,7 @@ function fmtClock() {
   return c;
 }
 function updateHUD() {
-  $('hudDay').textContent = 'יום ' + S.day;
+  $('hudDay').textContent = 'יום ' + shownDay();
   const ol = $('hudTasks'); ol.innerHTML = '';
   // the note only fits a few lines: the last finished task, the current one and what comes next
   const rows = document.body.classList.contains('portrait') ? 3 : 5;
@@ -1223,7 +1246,7 @@ function flavor(o) {
     case 'alarm': return ['השעון מראה ' + fmtClock() + '.'].concat(d === 4 ? ['הוא מתקתק אחורה.'] : d >= 6 ? ['הוא מתקתק בקצב של הלב שלי.'] : []);
     case 'picture': return PIC[d];
     case 'wardrobe': return S.player.dressed ? ['כבר התלבשתי.'] : ['קודם כל לצחצח שיניים.'];
-    case 'sink': return MIRROR[d];
+    case 'sink': return S.loop ? ['אני נראה... רגיל.', 'טוב.'] : MIRROR[d];
     case 'fridge': return d >= 6 ? ['אני לא פותח את זה שוב.'] : ['לא רעב עכשיו.'];
     case 'table': return ['עוד לא זמן לאכול.'];
     case 'cooler': return d >= 5 ? ['המים במכל לא זזים.', 'גם כשאני מנער אותו.'] : ['מים קרים. רגילים לגמרי.'];
@@ -1279,7 +1302,7 @@ async function doTask(t) {
   if (hook) await hook(lines);
   else if (t.key === 'toWork') await ride('office', lines);
   else if (t.key === 'goHome') await ride('home', lines);
-  else if (t.key === 'sleep') { if (S.day === 7) return finale(); if (lines) await say(lines); return nextDay(); }
+  else if (t.key === 'sleep') { if (S.day === 7) return finale(); if (S.loop) return loopEnding(); if (lines) await say(lines); return nextDay(); }
   else if (lines) await say(lines);
   S.mode = 'play';
 }
@@ -1295,8 +1318,12 @@ async function tryInteract() {
   } finally { if (S.mode === 'cut') S.mode = 'play'; }
 }
 
-async function startDay(n) {
+// day 8 replays day 1 underneath (S.loop), only the number on screen says 8
+const shownDay = () => S.loop ? 8 : S.day;
+const WAKE_LOOP = ['בררר! השעון המעורר.', 'איזה חלום מוזר היה לי.', 'טוב. עוד יום רגיל.'];
+async function startDay(n, opts) {
   S.mode = 'cut';
+  S.loop = !!(opts && opts.loop); S.zz = [];
   S.day = n; S.tasks = makeTasks(n); S.idx = 0; S.scene = 'home'; S.time = 'morning'; setClock('07:00');
   S.flags = {}; S.objs = buildObjects(n); S.npcs = makeNpcs(n); S.hist = []; S.laughT = 0; S.autoWalk = null;
   Object.assign(S.player, { x: 290, dir: 1, walk: 0, dressed: false });
@@ -1305,10 +1332,10 @@ async function startDay(n) {
   $('fade').style.transitionDuration = '0ms'; $('fade').style.opacity = 1;
   $('hud').hidden = false; updateHUD(); setDrone(n);
   await wait(300);
-  await card('יום ' + n, SUB[n], 2300);
+  await card('יום ' + shownDay(), S.loop ? 'עוד יום רגיל.' : SUB[n], 2300);
   await fadeIn(900);
   sfx.alarm();
-  await say(WAKE[n].map(l => l !== 'HINT' ? l : S.input === 'touch'
+  await say((S.loop ? WAKE_LOOP : WAKE[n]).map(l => l !== 'HINT' ? l : S.input === 'touch'
     ? '(◀ ▶ כדי ללכת, ✋ כדי לעשות דברים. אפשר גם פשוט לגעת בדברים על המסך)'
     : '(חיצים כדי ללכת, E כדי לעשות דברים)'));
   S.mode = 'play';
@@ -1331,9 +1358,31 @@ async function finale() {
   $('fade').style.transitionDuration = '0ms'; $('fade').style.opacity = 1;
   S.shakeBurst = 0; S.laughT = 0; $('hud').hidden = true;
   await wait(1400);
-  await card('', 'ביום השמיני הוא לא קם.', 2600);
-  await card('', 'השעון המעורר צלצל, וצלצל, וצלצל.', 2600);
-  await card('', 'אומרים שהוא עדיין שם. מצחצח שיניים.', 3000);
+  await card('', 'ביום השמיני הוא התעורר.', 2600);
+  await startDay(1, { loop: true });
+}
+
+// day 8: "it was only a nightmare", he falls asleep, and the house slowly glitches back
+async function loopEnding() {
+  S.mode = 'cut';
+  await say(['זה רק היה סיוט.']);
+  await fadeOut(900);
+  S.player.x = obj('bed').x; S.flags.asleep = true; S.zz = []; S.flags.zzT = 0; S.flags.breathT = 0;
+  await fadeIn(1400);
+  await wait(4000);
+  S.flags.ramp = 0;
+  while (S.flags.ramp < 1) await wait(100);
+  sfx.laugh(10); S.laughT = 0; S.shakeBurst = 2;
+  for (const w of ['לצחצח שיניים', 'הא', 'יום 1', 'הא הא']) { $('big').textContent = w; sfx.glitch(); await wait(260); }
+  $('big').textContent = '';
+  S.flags.crack = true; sfx.crack();
+  await wait(1600);
+  setDrone(0);
+  $('fade').style.transitionDuration = '0ms'; $('fade').style.opacity = 1;
+  S.shakeBurst = 0; $('hud').hidden = true;
+  await wait(1200);
+  sfx.alarm();
+  await card('יום 1', 'עוד יום רגיל.', 2800);
   S.mode = 'end';
   try { localStorage.setItem('seven-days-done', '1'); } catch (e) {}
   $('daySel').hidden = false;
@@ -1378,6 +1427,21 @@ function update(dt) {
   if (S.scene === 'street') for (const n of S.npcs) {
     if (n.copy) { const tx = p.x + n.off, dd = tx - n.x; if (Math.abs(dd) > 4) { n.x += Math.sign(dd) * Math.min(Math.abs(dd), 70 * dt); n.walk += dt * 8; } }
     else if (n.v) { n.x += n.v * dt; n.walk += dt * 9; if (n.x < -60) n.x = 1860; if (n.x > 1860) n.x = -60; }
+  }
+  if (S.flags.asleep) {
+    const r = S.flags.ramp;
+    if (r != null && r < 1) { S.flags.ramp = Math.min(1, r + dt / 15); setDrone(1 + 6 * rampE()); }
+    if (r > 0 && Math.random() < r * dt * 1.6) { sfx.glitch(); if (r > .5 && Math.random() < .3) spawnWhisper('הא'); }
+    if ((S.flags.breathT -= dt) <= 0) { noise(1.8, .035, 260, 'lowpass'); S.flags.breathT = 4; }
+    if ((S.flags.zzT -= dt) <= 0) {
+      const b = obj('bed'), odd = r > .3 && Math.random() < r;
+      const n = S.zz.filter(z => !z.odd).length;
+      S.zz.push({ x: b.x - b.w / 2 + 60, y: FLOOR - 112, age: 0, life: 3.6, seed: rand(0, 6), odd,
+        txt: odd ? (r > .8 ? 'לצחצח שיניים' : 'הא') : ['z', 'Z', 'Z'][n % 3], size: odd ? 26 : [24, 34, 46][n % 3] });
+      S.flags.zzT = 1.1 - (r || 0) * .6;
+    }
+    for (const z of S.zz) { z.age += dt; z.y -= dt * 20; z.x += dt * 6; }
+    S.zz = S.zz.filter(z => z.age < z.life);
   }
   if (S.mode !== 'play' && S.mode !== 'mini') return;
   // weirdness timers
@@ -1512,11 +1576,11 @@ function applyInputMode() {
 function begin(day) {
   initAudio();
   $('title').hidden = true; $('end').hidden = true;
-  startDay(day);
+  if (day === 8) startDay(1, { loop: true }); else startDay(day);
 }
 $('startBtn').addEventListener('click', () => begin(1));
 $('againBtn').addEventListener('click', () => begin(1));
-for (let i = 1; i <= 7; i++) {
+for (let i = 1; i <= 8; i++) {
   const b = document.createElement('button'); b.type = 'button'; b.textContent = 'יום ' + i;
   b.addEventListener('click', () => begin(i));
   $('daySel').appendChild(b);
@@ -1524,7 +1588,7 @@ for (let i = 1; i <= 7; i++) {
 // the day picker is a shortcut for replaying; show it only after the game was finished once, or with #days
 let unlocked = false;
 try { unlocked = localStorage.getItem('seven-days-done') === '1'; } catch (e) {}
-const hashDay = /^#?day([1-7])$/.exec(location.hash);
+const hashDay = /^#?day([1-8])$/.exec(location.hash);
 $('daySel').hidden = !(unlocked || location.hash === '#days' || hashDay);
 
 // Portrait phones: the game sits on top, the to-do note, dialog and mini games move into
