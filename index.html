@@ -1,0 +1,1393 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>שבעה ימים</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;800&family=Karantina:wght@400;700&display=swap">
+<style>
+/* Layout: one 16:9 stage in a dark room; the to-do list is a sticky note stuck on the screen, dialog runs along the bottom like subtitles. */
+:root {
+  --room: #0f0e0c;
+  --paper: #f1e9d8;
+  --note: #fbe98f;
+  --note-ink: #2c2512;
+  --blood: #c4271e;
+  --muted: #9a907c;
+  --display: 'Karantina', 'Heebo', Arial, sans-serif;
+  --body: 'Heebo', Arial, sans-serif;
+  --u: 1px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--room); color: var(--paper); font-family: var(--body);
+  overflow: hidden; -webkit-user-select: none; user-select: none; touch-action: manipulation;
+}
+#wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding-inline: 16px; padding-block: 16px; }
+#game { position: relative; overflow: hidden; background: #000; max-width: 100%; box-shadow: 0 0 0 1px #2a2620, 0 30px 80px #000; }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* HUD */
+#hud { position: absolute; top: calc(var(--u) * 14); right: calc(var(--u) * 14); width: calc(var(--u) * 180); pointer-events: none; }
+#note {
+  background: var(--note); color: var(--note-ink); padding: calc(var(--u) * 10) calc(var(--u) * 14) calc(var(--u) * 12);
+  transform: rotate(1.5deg); box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 14) rgba(0,0,0,.45);
+  transition: transform .6s;
+}
+#noteHead { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--display); font-size: calc(var(--u) * 30); line-height: 1; border-bottom: calc(var(--u) * 2) solid rgba(44,37,18,.35); padding-bottom: calc(var(--u) * 4); }
+#hudClock { font-family: var(--body); font-weight: 800; font-size: calc(var(--u) * 15); font-variant-numeric: tabular-nums; letter-spacing: .04em; direction: ltr; }
+#hudTasks { list-style: none; margin: calc(var(--u) * 6) 0 0; padding: 0; display: grid; gap: calc(var(--u) * 2); font-size: calc(var(--u) * 15); }
+#hudTasks li { position: relative; padding-right: calc(var(--u) * 18); line-height: 1.35; opacity: .55; }
+#hudTasks li::before { content: ''; position: absolute; right: 0; top: .35em; width: .7em; height: .7em; border: calc(var(--u) * 1.5) solid currentColor; }
+#hudTasks li.done { text-decoration: line-through; opacity: .45; }
+#hudTasks li.done::before { background: currentColor; }
+#hudTasks li.cur { opacity: 1; font-weight: 800; }
+#hudTasks li.more { padding-right: 0; opacity: .4; letter-spacing: .2em; }
+#hudTasks li.more::before { display: none; }
+#hud.mad #note { transform: rotate(-4deg) skewX(-3deg); }
+#hud.mad #hudTasks li.cur { color: var(--blood); }
+
+/* dialog */
+#dialog {
+  position: absolute; left: 50%; bottom: calc(var(--u) * 18); transform: translateX(-50%);
+  width: min(92%, calc(var(--u) * 720)); background: rgba(12,11,10,.88); border: calc(var(--u) * 1) solid rgba(241,233,216,.25);
+  padding: calc(var(--u) * 14) calc(var(--u) * 20) calc(var(--u) * 16); font-size: calc(var(--u) * 21); line-height: 1.45; min-height: calc(var(--u) * 70);
+  cursor: pointer;
+}
+#dialog b { color: var(--note); font-weight: 800; margin-left: .3em; }
+#dialog .more { position: absolute; left: calc(var(--u) * 14); bottom: calc(var(--u) * 6); font-size: calc(var(--u) * 12); color: var(--muted); letter-spacing: .08em; }
+#dialog.mad { font-family: var(--display); font-size: calc(var(--u) * 30); color: #ffd9d4; }
+
+/* mini games */
+#mini {
+  position: absolute; left: 50%; bottom: calc(var(--u) * 20); transform: translateX(-50%);
+  background: rgba(12,11,10,.92); border: calc(var(--u) * 1) solid rgba(241,233,216,.3);
+  padding: calc(var(--u) * 18) calc(var(--u) * 28); text-align: center; min-width: calc(var(--u) * 340);
+}
+#miniTitle { font-family: var(--display); font-size: calc(var(--u) * 40); line-height: 1; }
+#miniKey { direction: ltr; font-size: calc(var(--u) * 44); font-weight: 800; letter-spacing: .12em; margin: calc(var(--u) * 10) 0 calc(var(--u) * 4); font-variant-numeric: tabular-nums; }
+#miniKey .d { color: var(--muted); opacity: .5; }
+#miniKey .n { color: var(--note); }
+#miniKey .on { color: var(--note); }
+#miniHelp { font-size: calc(var(--u) * 15); color: var(--muted); }
+.bar { height: calc(var(--u) * 8); background: rgba(255,255,255,.12); margin-top: calc(var(--u) * 12); }
+.bar i { display: block; height: 100%; width: 0; background: var(--note); transition: width .12s; }
+#mini.err { animation: jolt .2s; }
+@keyframes jolt { 25% { margin-left: -8px; } 75% { margin-left: 8px; } }
+
+/* fades and title cards */
+#fade { position: absolute; inset: 0; background: #000; opacity: 1; pointer-events: none; transition: opacity .5s; display: flex; align-items: center; justify-content: center; }
+#cardBox { text-align: center; opacity: 0; transition: opacity .7s; }
+#cardBox.show { opacity: 1; }
+#cardT { font-family: var(--display); font-size: calc(var(--u) * 110); line-height: .9; }
+#cardS { font-size: calc(var(--u) * 20); color: var(--muted); margin-top: calc(var(--u) * 10); }
+#big { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: calc(var(--u) * 150); color: var(--paper); text-shadow: 4px 0 var(--blood), -4px 0 #2bd; pointer-events: none; text-align: center; line-height: .9; }
+
+/* whispers */
+#whispers { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#whispers span { position: absolute; font-family: var(--display); color: rgba(255,230,225,.85); animation: whisper 3.2s forwards; white-space: nowrap; }
+@keyframes whisper { 0% { opacity: 0; transform: scale(.9); } 20% { opacity: 1; } 100% { opacity: 0; transform: scale(1.15); filter: blur(2px); } }
+
+/* screens */
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--u) * 14); text-align: center; background: rgba(8,7,6,.82); padding: 16px; }
+.screen h1 { font-family: var(--display); font-weight: 700; font-size: calc(var(--u) * 140); line-height: .85; margin: 0; letter-spacing: .01em; }
+.screen p { margin: 0; font-size: calc(var(--u) * 19); color: var(--muted); max-width: 32em; line-height: 1.5; }
+.keys { display: flex; gap: calc(var(--u) * 22); flex-wrap: wrap; justify-content: center; font-size: calc(var(--u) * 16); color: var(--paper); }
+kbd { font-family: var(--body); font-weight: 800; border: 1px solid rgba(241,233,216,.45); border-bottom-width: 3px; padding: 0 .45em; margin: 0 .15em; direction: ltr; display: inline-block; }
+button.go {
+  font-family: var(--display); font-size: calc(var(--u) * 38); line-height: 1; padding: calc(var(--u) * 10) calc(var(--u) * 30) calc(var(--u) * 6);
+  background: var(--note); color: var(--note-ink); border: 0; cursor: pointer; transform: rotate(-1deg); box-shadow: 0 6px 18px rgba(0,0,0,.5);
+}
+button.go:hover { transform: rotate(1deg) scale(1.03); }
+button.go:focus-visible { outline: 3px solid var(--paper); outline-offset: 4px; }
+.days { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: calc(var(--u) * 14); color: var(--muted); }
+.days button { font: inherit; background: transparent; color: var(--muted); border: 1px solid rgba(241,233,216,.25); padding: 2px 10px; cursor: pointer; }
+.days button:hover, .days button:focus-visible { color: var(--paper); border-color: var(--paper); }
+
+/* touch controls */
+#touch { position: absolute; inset: auto 0 0 0; display: none; justify-content: space-between; padding: calc(var(--u) * 12); pointer-events: none; }
+#touch.on { display: flex; }
+#touch button { pointer-events: auto; width: calc(var(--u) * 78); height: calc(var(--u) * 78); border-radius: 50%; border: 2px solid rgba(241,233,216,.4); background: rgba(12,11,10,.45); color: var(--paper); font-size: calc(var(--u) * 30); font-weight: 800; font-family: var(--body); touch-action: none; }
+#touch .pair { display: flex; gap: calc(var(--u) * 12); direction: ltr; }
+@media (prefers-reduced-motion: reduce) { #whispers span { animation-duration: 4s; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="game">
+    <canvas id="cv" aria-label="המשחק"></canvas>
+    <div id="whispers"></div>
+    <div id="hud" hidden>
+      <div id="note">
+        <div id="noteHead"><span id="hudDay">יום 1</span><span id="hudClock">07:00</span></div>
+        <ol id="hudTasks"></ol>
+      </div>
+    </div>
+    <div id="mini" hidden>
+      <div id="miniTitle"></div>
+      <div id="miniKey"></div>
+      <div id="miniHelp"></div>
+      <div class="bar"><i id="miniBar"></i></div>
+    </div>
+    <div id="dialog" hidden><span id="dialogText"></span><span class="more">E ▸</span></div>
+    <div id="big"></div>
+    <div id="touch">
+      <button id="tAct" type="button" aria-label="פעולה">E</button>
+      <div class="pair">
+        <button id="tLeft" type="button" aria-label="שמאלה">◀</button>
+        <button id="tRight" type="button" aria-label="ימינה">▶</button>
+      </div>
+    </div>
+    <div id="fade"><div id="cardBox"><div id="cardT"></div><div id="cardS"></div></div></div>
+    <div id="title" class="screen">
+      <h1>שבעה ימים</h1>
+      <p>אתה איש רגיל. יש לך שגרה. מצחצחים שיניים, מתלבשים, הולכים לעבודה, חוזרים, אוכלים, ישנים. ושוב.</p>
+      <div class="keys">
+        <span><kbd>←</kbd><kbd>→</kbd> או <kbd>A</kbd><kbd>D</kbd> ללכת</span>
+        <span><kbd>E</kbd> או <kbd>רווח</kbd> לעשות דברים</span>
+      </div>
+      <button class="go" id="startBtn" type="button">להתחיל את היום</button>
+      <div class="days" id="daySel" aria-label="קפיצה ליום"></div>
+    </div>
+    <div id="end" class="screen" hidden>
+      <h1>סוף</h1>
+      <p id="endText">ביום השמיני השעון המעורר צלצל, וצלצל, וצלצל.</p>
+      <button class="go" id="againBtn" type="button">לקום שוב</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ================================================================
+//  שבעה ימים — a 2D routine that slowly falls apart
+// ================================================================
+const W = 960, H = 540, FLOOR = 440, SCALE = 2, SPEED = 250;
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+cv.width = W * SCALE; cv.height = H * SCALE;
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// ---------------------------------------------------------------- state
+const S = {
+  mode: 'title', day: 1, tasks: [], idx: 0, scene: 'home', time: 'morning', clock: '07:00',
+  flags: {}, objs: [], npcs: [], t: 0, busT: 0, hist: [], dialog: null, mini: null,
+  player: { x: 290, dir: 1, walk: 0, moving: false, dressed: false },
+  invertUntil: 0, nextInvert: 0, nextWhisper: 0, nextLaugh: 0, shakeBurst: 0, laughT: 0,
+};
+const keys = { left: false, right: false };
+
+// ---------------------------------------------------------------- content
+const LABELS = {
+  base: { brushAM: 'לצחצח שיניים', dress: 'להתלבש', toWork: 'ללכת לעבודה', work: 'לעבוד', goHome: 'לחזור הביתה', eat: 'לאכול משהו', dinner: 'ארוחת ערב', brushPM: 'לצחצח שיניים', sleep: 'ללכת לישון' },
+  5: { brushAM: 'לצחצח שינייים', dress: 'להתלבש להתלבש', toWork: 'ללכת לעבודה (?)', work: 'לעבוד לעבוד לעבוד', goHome: 'לחזור הביתה. איזה בית?', eat: 'לאכול', dinner: 'ארוחת ערב (צלחת)', brushPM: 'ל צ ח צ ח', sleep: 'לא לישון' },
+  6: { brushAM: 'תצחצח לו שיניים', dress: 'תלביש אותו', toWork: 'תשלח אותו לעבודה', work: 'תגרום לו לעבוד', goHome: 'תחזיר אותו הביתה', eat: 'תאכיל אותו', dinner: 'עוד אוכל', brushPM: 'שוב שיניים', sleep: 'תשכיב אותו' },
+};
+
+const SUB = {
+  1: 'עוד יום רגיל.', 2: 'עוד יום רגיל.', 3: 'עוד יום רגיל?', 4: 'עוד יום.',
+  5: 'יום רגיל רגיל רגיל.', 6: 'אתה עדיין פה?', 7: 'או יום 1. מה זה משנה.',
+};
+
+const WAKE = {
+  1: ['בררר! השעון המעורר.', 'עוד יום מתחיל. קודם כל לצחצח שיניים.', '(חיצים כדי ללכת, E כדי לעשות דברים)'],
+  2: ['השעון המעורר צלצל.', '...או שחלמתי שהוא צלצל?'],
+  3: ['התעוררתי עייף.', 'כאילו לא ישנתי בכלל.'],
+  4: ['שמעתי מישהו קורא בשם שלי.', 'אני גר לבד.'],
+  5: ['הקירות...', 'הם תמיד היו בצבע הזה?'],
+  6: ['אני ער.', 'אני ער. אני ער. אני ער.'],
+  7: ['הא.', 'הא הא.', 'בוקר טוב! בוקר טוב! בוקר טוב!'],
+};
+
+const TEXT = {
+  brushAM: {
+    1: ['שיניים נקיות. מוכן ליום.'],
+    2: ['המשחה טעמה קצת כמו מתכת.', 'בטח קניתי סוג אחר.'],
+    4: ['ההשתקפות שלי זזה רגע אחריי.', '...בטח עייפות.'],
+    5: ['ספרתי את השיניים. 33.', 'אתמול היו 32.'],
+    6: ['השתקפות: אל תלך לעבודה היום.', 'השתקפות: הוא לא יחזור הביתה אם תלך.', '...מי זה "הוא"?'],
+  },
+  dress: {
+    1: ['חולצה מגוהצת. עניבה. כמו תמיד.'],
+    2: ['העניבה כבר הייתה קשורה.', 'לא זוכר שקשרתי אותה.'],
+    4: ['בארון תלויות ארבע חליפות זהות.', 'היו שלוש. אני בטוח שהיו שלוש.'],
+    5: ['כל החולצות באותו צבע.', 'גם אלה שהיו כחולות.'],
+    6: ['אני מתלבש בשביל מי בדיוק?'],
+    7: ['בארון יש שבע חליפות.', 'כולן חמות, כאילו מישהו לבש אותן הרגע.'],
+  },
+  toWork: {
+    1: ['נסיעה רגילה. האוטובוס הגיע בזמן.'],
+    2: ['האוטובוס עצר באותה תחנה פעמיים.', 'אף אחד לא שם לב.'],
+    4: ['כל הנוסעים מסתכלים עליי.', 'כל הדרך.'],
+    5: ['כל הנוסעים ירדו באותה תחנה. כולם. בבת אחת.', 'ואז עלו שוב.'],
+    6: ['האוטובוס ריק.', 'גם הנהג.'],
+    7: ['האוטובוס נוסע.', 'ונוסע.', 'ונוסע.', 'ונוסע.'],
+  },
+  work: {
+    1: ['עוד דוח. עוד טבלה. ככה זה.'],
+    2: ['הקלדתי בדיוק את אותו דוח כמו אתמול.', 'מילה במילה.'],
+    3: ['המסך כתב משהו לפני שנגעתי במקלדת.', 'כשהסתכלתי שוב, זה נעלם.'],
+    5: ['כל הקבצים במחשב נקראים "יום_5".', 'גם הישנים.'],
+    6: ['כתבתי WAKE UP.', 'אני לא החלטתי לכתוב את זה.'],
+    7: ['HELP ME', 'הא. הא. הא.', 'למה זה מצחיק? למה זה כל כך מצחיק?'],
+  },
+  goHome: {
+    1: ['יום עבודה נגמר. הביתה.'],
+    2: ['השמש שוקעת.', 'או שזו אותה שקיעה של אתמול?'],
+    3: ['אני לא זוכר את רוב היום.'],
+    4: ['לא היה אף אחד ברחוב. אף אחד.'],
+    5: ['הבית שלי נראה מהחלון של האוטובוס.', 'הוא נראה בכל תחנה.'],
+    6: ['השמש לא שוקעת.', 'היא רק נהיית אדומה יותר.'],
+  },
+  eat: {
+    1: ['סנדוויץ\' מהמקרר. טעים.'],
+    2: ['החלב פג תוקף ב-1987.', 'קניתי אותו אתמול.'],
+    3: ['המקרר ריק.', '...אבל אני שבע. כבר אכלתי?'],
+    4: ['המקרר מזמזם בקצב של דופק.'],
+    5: ['כל המדפים מלאים בקופסאות עם השם שלי.'],
+    6: ['בתוך המקרר יש עוד מקרר.', 'ובתוכו עוד אחד.', 'סגרתי מהר.'],
+  },
+  dinner: {
+    1: ['ארוחת ערב. פסטה. יום טוב.'],
+    2: ['פסטה. בדיוק כמו אתמול.', 'וכמו שלשום.'],
+    3: ['אני לא זוכר שבישלתי את זה.'],
+    4: ['מישהו ערך את השולחן לשניים.', 'הכיסא השני עדיין חם.'],
+    5: ['הצלחת ריקה.', '...', 'טעים מאוד.'],
+    6: ['האוכל זז.', 'אכלתי אותו בכל זאת.'],
+    7: ['על הצלחת יש מברשת שיניים.', 'כמובן. כמובן שיש.'],
+  },
+  brushPM: {
+    1: ['שיניים נקיות. אפשר לישון.'],
+    2: ['אני די בטוח שכבר צחצחתי לפני חמש דקות.'],
+    3: ['המברשת הייתה רטובה עוד לפני שהשתמשתי בה.'],
+    4: ['ההשתקפות שלי סיימה לצחצח לפניי.'],
+    5: ['ההשתקפות שלי לא מצחצחת.', 'היא רק מסתכלת.'],
+    6: ['השתקפות: מחר זה היום האחרון.', 'השתקפות: תיהנה.'],
+  },
+  sleep: {
+    1: ['לילה טוב.'],
+    2: ['לילה טוב.', 'לילה טוב.'],
+    3: ['מתי בכלל הלכתי לישון אתמול?'],
+    4: ['מישהו נושם בחדר.', 'זה רק אני. נכון?'],
+    5: ['אני לא רוצה לישון.', 'אני לא רוצה לחלום שוב את אותו יום.'],
+    6: ['אם אסגור עיניים, זה יתחיל מחדש.', '...', 'אז אני לא אסגור.'],
+  },
+  brush1: { 7: ['עוד פעם.'] },
+  brush2: { 7: ['עוד כיור. תמיד היה פה כיור.', 'עוד פעם.'] },
+  brush3: { 7: ['השיניים שלי לבנות מאוד.', 'לבנות כמו מסך.', 'עוד פעם.'] },
+  brush4: { 7: ['זהו. אני הולך לישון.', 'אני הולך לישון. אני הולך לישון. אני הולך לישון.'] },
+};
+
+const PIC = {
+  1: ['נוף. קניתי את זה בשוק.'], 2: ['התמונה עקומה. יישרתי אותה.', 'היא עקומה שוב.'],
+  3: ['ההרים בתמונה נראים קרובים יותר.'], 4: ['זה לא נוף.', 'זה אני.'],
+  5: ['אני בתמונה.', 'בלי פנים.'], 6: ['הוא מסתכל עליי.', 'אני מסתכל עליו.', 'מי מאיתנו בתמונה?'], 7: ['הא הא הא.'],
+};
+const MIRROR = {
+  1: ['אני נראה עייף.'], 2: ['אני נראה עייף. כמו אתמול.'], 3: ['יש לי עיגולים שחורים מתחת לעיניים.'],
+  4: ['ההשתקפות ממצמצת כשאני לא.'], 5: ['ההשתקפות שלי לא זזה כשאני זז.'],
+  6: ['השתקפות: אתה עדיין פה?', 'השתקפות: גם אני.'], 7: ['השתקפות: הא הא הא הא', 'אני: הא הא הא הא'],
+};
+const DANI = {
+  1: ['דני: בוקר טוב! עוד יום רגיל, הא?'],
+  2: ['דני: בוקר טוב! עוד יום רגיל, הא?', 'דני: בוקר טוב! עוד יום רגיל, הא?', '...הוא אמר את זה פעמיים.'],
+  3: ['דני: מי ישב שם בפינה?', 'דני: ...אף אחד, נכון. אף אחד לא ישב שם אף פעם.'],
+  4: ['דני: אתה בסדר? אתה נראה חיוור.', 'דני: תלך הביתה מוקדם היום. אם תוכל.'],
+  5: ['דני: ...', 'דני: אל תסתכל עליי ככה. יש לי פנים. תסתכל שוב.'],
+  6: ['דני: הם לא אמיתיים.', 'דני: גם אני לא.', 'דני: אתה יודע את זה, נכון?'],
+  7: ['דני: אני אתה.', 'דני: סיימת לצחצח שיניים?', 'דני: הא.'],
+};
+const YAEL = {
+  1: ['יעל: שלחת את הדוח?'], 2: ['יעל: שלחת את הדוח?', 'יעל: רגע, שאלתי אותך את זה אתמול? לא זוכרת.'],
+  3: ['יעל: איך הגעת היום? לא ראיתי אותך נכנס.'], 4: ['יעל: הקפה פה טעים לך? יש לו טעם של אתמול.'],
+  5: ['יעל: ...', '(אין לה פנים. אף אחד לא שם לב.)'], 6: ['יעל: תפסיק לשחק בו.', 'רגע. עם מי היא מדברת?'],
+  7: ['יעל: הא הא הא.'],
+};
+const MOSHE = {
+  1: ['משה: עוד שבוע, עוד דוחות.'], 2: ['משה: ראית את השעון? הוא מראה 61 דקות.', 'משה: חח. בטח מקולקל.'],
+  7: ['משה: גם אני אתה.'],
+};
+const WHISPERS = {
+  5: ['שוב', 'אתה בטוח?', '33', 'עוד יום'],
+  6: ['תתעורר', 'זה לא אמיתי', 'הם יודעים', 'אל תלך', 'מי מזיז אותי?', 'עוד יום אחד'],
+  7: ['הא', 'הא הא', 'לצחצח שיניים', 'עוד פעם', 'הא', 'HELP', 'לישון', 'אני אתה', 'הא הא הא'],
+};
+
+const FX = {
+  1: { sat: 1, con: 1, hue: 0, noise: 0, glitch: 0, shake: 0, vig: .22 },
+  2: { sat: .86, con: 1, hue: 0, noise: .02, glitch: 0, shake: 0, vig: .3 },
+  3: { sat: .72, con: 1.04, hue: 0, noise: .04, glitch: .004, shake: 0, vig: .4 },
+  4: { sat: .56, con: 1.1, hue: 0, noise: .07, glitch: .01, shake: 0, vig: .5 },
+  5: { sat: .42, con: 1.15, hue: -15, noise: .1, glitch: .02, shake: .6, vig: .6 },
+  6: { sat: .9, con: 1.25, hue: -20, noise: .15, glitch: .045, shake: 1.3, vig: .7 },
+  7: { sat: 1.6, con: 1.35, hue: 0, noise: .22, glitch: .1, shake: 2.4, vig: .78 },
+};
+
+// ---------------------------------------------------------------- tasks & objects
+function makeTasks(d) {
+  const list = d === 7 ? [
+    ['brush1', 'sink', 'brush'], ['brush2', 'sink2', 'brush'], ['brush3', 'sink3', 'brush'], ['dress', 'wardrobe'],
+    ['toWork', 'busStop'], ['work', 'computer', 'type'], ['goHome', 'officeExit'], ['dinner', 'table'],
+    ['brush4', 'sink', 'brush'], ['sleep', 'bed'],
+  ] : [
+    ['brushAM', 'sink', 'brush'], ['dress', 'wardrobe'], ['toWork', 'busStop'], ['work', 'computer', 'type'],
+    ['goHome', 'busStop'], ['eat', 'fridge'], ['dinner', 'table'], ['brushPM', 'sink', 'brush'], ['sleep', 'bed'],
+  ];
+  return list.map(([key, obj, mini]) => ({ key, obj, mini, done: false }));
+}
+function taskLabel(t) {
+  if (S.day === 7) return 'לצחצח שיניים';
+  return (LABELS[S.day] || LABELS.base)[t.key] || LABELS.base[t.key];
+}
+const curTask = () => S.tasks[S.idx];
+const obj = id => S.objs.find(o => o.id === id);
+
+function buildObjects(d) {
+  const o = [];
+  const A = (id, scene, x, w, h, name, ex) => o.push(Object.assign({ id, type: id, scene, x, w, h, name }, ex || {}));
+  // home
+  A('bed', 'home', 150, 230, 75, 'מיטה');
+  A('alarm', 'home', 330, 50, 80, 'שעון מעורר');
+  A('picture', 'home', 465, 70, 60, 'תמונה', { top: 180 });
+  A('wardrobe', 'home', 590, 120, 210, 'ארון');
+  A('sink', 'home', 900, 80, 240, 'כיור');
+  A('fridge', 'home', 1260, 95, 195, 'מקרר');
+  if (d === 7) A('sink2', 'home', 1430, 80, 240, 'כיור', { type: 'sink' });
+  else A('stove', 'home', 1430, 140, 100, null);
+  A('table', 'home', 1640, 170, 80, 'שולחן');
+  if (d === 7) A('sink3', 'home', 1065, 80, 240, 'כיור', { type: 'sink' });
+  A('frontDoor', 'home', 2250, 90, 190, 'דלת', { travel: true });
+  // street
+  A('homeDoor', 'street', 150, 80, 180, 'הבית', { travel: true });
+  A('busStop', 'street', 1480, 170, 210, 'תחנת אוטובוס', { travel: true });
+  // office
+  A('officeExit', 'office', 110, 90, 190, 'יציאה', { travel: true });
+  A('cooler', 'office', 250, 50, 130, 'מכל מים');
+  A('yael', 'office', 480, 90, 110, 'יעל', { shirt: '#b5563f' });
+  A('dani', 'office', 760, 90, 110, 'דני', { shirt: '#3f6fb5' });
+  A('computer', 'office', 1060, 110, 110, 'המחשב שלי');
+  A('moshe', 'office', 1330, 90, 110, 'משה', { shirt: '#4f8a52' });
+  return o;
+}
+
+function makeNpcs(d) {
+  const n = [];
+  const shirts = ['#9b4d4d', '#4d6b9b', '#7b8b4d', '#8b6b9b', '#c08a3e'];
+  if (d <= 3 || d === 5) for (let i = 0; i < 5; i++) n.push({ x: 300 + i * 300, v: (i % 2 ? 1 : -1) * rand(40, 70), shirt: shirts[i], walk: rand(0, 6) });
+  if (d === 4) [420, 700, 1000, 1250].forEach((x, i) => n.push({ x, v: 0, shirt: shirts[i], stand: true }));
+  if (d === 7) [-260, -170, -90, 90, 170, 260].forEach(off => n.push({ x: 900 + off, v: 0, off, copy: true, walk: 0 }));
+  return n;
+}
+
+// ---------------------------------------------------------------- audio
+const AU = { ctx: null };
+function initAudio() {
+  if (AU.ctx) return;
+  try {
+    const C = window.AudioContext || window.webkitAudioContext;
+    const a = AU.ctx = new C();
+    AU.master = a.createGain(); AU.master.gain.value = .6; AU.master.connect(a.destination);
+    const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 250;
+    const g = a.createGain(); g.gain.value = 0;
+    const o1 = a.createOscillator(), o2 = a.createOscillator();
+    o1.type = o2.type = 'sawtooth'; o1.frequency.value = 55; o2.frequency.value = 55.2;
+    o1.connect(f); o2.connect(f); f.connect(g); g.connect(AU.master); o1.start(); o2.start();
+    AU.drone = { o2, f, g };
+    const buf = a.createBuffer(1, a.sampleRate, a.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+    AU.noise = buf;
+    setDrone(S.mode === 'title' ? 0 : S.day);
+  } catch (e) { AU.ctx = null; }
+}
+function setDrone(d) {
+  if (!AU.ctx) return;
+  const t = AU.ctx.currentTime, { o2, f, g } = AU.drone;
+  o2.frequency.setTargetAtTime(55 * (1 + .0035 * d * d), t, 1);
+  f.frequency.setTargetAtTime(170 + d * 70, t, 1);
+  g.gain.setTargetAtTime(d ? .012 + d * .008 : 0, t, 1.2);
+}
+function tone(freq, dur, type = 'sine', vol = .1, delay = 0, slideTo) {
+  if (!AU.ctx) return;
+  const a = AU.ctx, t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(AU.master); o.start(t); o.stop(t + dur + .02);
+}
+function noise(dur, vol, freq, type = 'bandpass', delay = 0) {
+  if (!AU.ctx) return;
+  const a = AU.ctx, t = a.currentTime + delay, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  s.buffer = AU.noise; f.type = type; f.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(AU.master); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
+}
+const sfx = {
+  alarm() { for (let i = 0; i < 6; i++) tone(i % 2 ? 1046 : 880, .12, 'square', .05, i * .17); },
+  ding() { tone(1320, .3, 'sine', .05); tone(1760, .3, 'sine', .03, .08); },
+  glitch() { noise(.25, .25, rand(600, 4000)); tone(rand(80, 800), .2, 'square', .05, 0, rand(60, 2000)); },
+  brush() { noise(.07, .1, 3200, 'highpass'); },
+  click() { noise(.03, .12, 2200); },
+  err() { tone(140, .15, 'square', .06); },
+  door() { tone(110, .18, 'triangle', .12); noise(.12, .08, 500); },
+  bus() { noise(1.6, .07, 140, 'lowpass'); },
+  laugh(n = 6) {
+    for (let i = 0; i < n; i++) {
+      const f = rand(170, S.day === 7 ? 340 : 240);
+      tone(f, .14, 'sawtooth', .07, i * .19, f * .7);
+      noise(.1, .05, 1100, 'bandpass', i * .19);
+    }
+  },
+  crack() { noise(.6, .5, 900); noise(1.4, .2, 200, 'lowpass', .05); },
+};
+
+// ---------------------------------------------------------------- drawing helpers
+function rr(c, x, y, w, h, r, fill) { c.fillStyle = fill; c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, r) : c.rect(x, y, w, h); c.fill(); }
+function rect(c, x, y, w, h, fill) { c.fillStyle = fill; c.fillRect(x, y, w, h); }
+function circle(c, x, y, r, fill) { c.fillStyle = fill; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+function text(c, s, x, y, size, color, align = 'center', font = 'Heebo') {
+  c.font = `800 ${size}px ${font}, Heebo, Arial, sans-serif`; c.fillStyle = color; c.textAlign = align; c.textBaseline = 'middle';
+  c.direction = 'rtl'; c.fillText(s, x, y);
+}
+
+function sky() {
+  if (S.day === 7) return ['#22000a', '#7d0b16'];
+  if (S.day === 6) return ['#5a0c0c', '#d84a2a'];
+  return { morning: ['#8fc6ea', '#f6d9b0'], day: ['#5aa6e0', '#c4e4f7'], sunset: ['#4b5a9c', '#f08c52'], night: ['#0a0f2c', '#283062'] }[S.time];
+}
+function drawSky(c, x, y, w, h, parallax = 0, figure = false) {
+  const [a, b] = sky();
+  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, a); g.addColorStop(1, b);
+  c.fillStyle = g; c.fillRect(x, y, w, h);
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
+  // sun or moon
+  const t = S.time, sx = x + w * .7 - parallax * .05;
+  if (S.day >= 6) { circle(c, sx, y + h * .45, 26, S.day === 7 ? '#000' : '#ffdd88'); if (S.day === 7) { c.strokeStyle = '#ff3020'; c.lineWidth = 3; c.stroke(); } }
+  else if (t === 'night') { circle(c, sx, y + h * .3, 13, '#f2f0dc'); circle(c, sx + 6, y + h * .3 - 4, 11, a); }
+  else circle(c, sx, y + (t === 'day' ? h * .25 : t === 'sunset' ? h * .85 : h * .7), 18, t === 'sunset' ? '#ffb070' : '#fff1b8');
+  // distant city
+  for (let i = 0; i < 8; i++) {
+    const bx = x + i * 34 - (parallax * .1) % 34, bh = 18 + ((i * 37) % 30);
+    rect(c, bx, y + h - bh, 28, bh, S.time === 'night' ? '#151a33' : 'rgba(60,70,90,.45)');
+  }
+  if (figure) { // someone standing outside, watching
+    rect(c, x + w * .35, y + h - 46, 8, 30, '#000'); circle(c, x + w * .35 + 4, y + h - 52, 6, '#000');
+  }
+  c.restore();
+}
+function drawWindow(c, x, y, w, h, figure) {
+  rect(c, x - 6, y - 6, w + 12, h + 12, '#f4f1ea');
+  drawSky(c, x, y, w, h, x, figure);
+  rect(c, x + w / 2 - 3, y, 6, h, '#f4f1ea'); rect(c, x, y + h / 2 - 3, w, 6, '#f4f1ea');
+  rect(c, x - 10, y + h + 4, w + 20, 8, '#e3ddd0');
+}
+
+function look() {
+  const p = S.player;
+  return { dir: p.dir, walk: p.walk, pajamas: !p.dressed, suit: p.dressed, grin: S.day === 7 && S.laughT > 0 };
+}
+
+function drawPerson(c, x, o = {}) {
+  const s = o.scale || 1, dir = o.dir || 1, y = o.y ?? FLOOR;
+  c.save(); c.translate(x, y); c.scale(s * dir, s);
+  const skin = o.skin || '#e2ab84', shoe = '#1b1b1f';
+  const pants = o.pajamas ? '#6a8fbf' : o.suit ? '#262d38' : (o.pants || '#2d3340');
+  const sit = o.sit, hip = sit ? -45 : -40, sw = sit ? 0 : Math.sin(o.walk || 0) * 6;
+  // legs
+  if (sit) {
+    rect(c, -8, hip - 4, 30, 11, pants); rect(c, 14, hip, 9, -hip, pants); rect(c, 14, -5, 15, 5, shoe);
+  } else {
+    rect(c, -9 + sw, hip, 9, -hip, pants); rect(c, 1 - sw, hip, 9, -hip, pants);
+    rect(c, -9 + sw, -5, 13, 5, o.pajamas ? skin : shoe); rect(c, 1 - sw, -5, 13, 5, o.pajamas ? skin : shoe);
+  }
+  // torso
+  const top = hip - 44;
+  if (o.pajamas) {
+    rr(c, -14, top, 28, 46, 6, '#86a9d4');
+    c.fillStyle = 'rgba(255,255,255,.35)'; for (let i = -10; i < 14; i += 7) c.fillRect(i, top + 2, 2, 42);
+  } else if (o.suit) {
+    rr(c, -14, top, 28, 46, 6, '#2f3a4a');
+    c.fillStyle = '#f2f2f2'; c.beginPath(); c.moveTo(2, top); c.lineTo(14, top); c.lineTo(8, top + 16); c.fill();
+    rect(c, 7, top + 2, 3, 20, o.tie || '#b0302a');
+  } else rr(c, -14, top, 28, 46, 6, o.shirt || '#dfe6ee');
+  // arm
+  c.save(); c.translate(0, top + 6); c.rotate(sit ? -1.1 : (o.armUp ? -2.3 : sw * .05));
+  rect(c, -4, 0, 8, 32, o.pajamas ? '#7898c4' : o.suit ? '#283241' : (o.shirt || '#dfe6ee'));
+  circle(c, 0, 35, 4.5, skin); c.restore();
+  // head
+  const cy = top - 15;
+  circle(c, 2, cy, 14, skin);
+  c.fillStyle = o.hair || '#3a2a1e'; c.beginPath(); c.arc(2, cy, 14.6, Math.PI * 1.02, Math.PI * 2.02); c.fill();
+  rect(c, -12, cy - 4, 6, 10, o.hair || '#3a2a1e');
+  if (!o.faceless) {
+    if (o.eyesWide) {
+      circle(c, 6, cy - 2, 3.4, '#fff'); circle(c, 12.5, cy - 2, 3.4, '#fff');
+      circle(c, 7, cy - 2, 1.4, '#000'); circle(c, 13.5, cy - 2, 1.4, '#000');
+    } else { rect(c, 5, cy - 4, 2.4, 3.4, '#1a1a1a'); rect(c, 11.5, cy - 4, 2.4, 3.4, '#1a1a1a'); }
+    if (o.grin) {
+      c.fillStyle = '#3a0808'; c.beginPath(); c.arc(9, cy + 4, 6, 0, Math.PI); c.fill();
+      rect(c, 4, cy + 4, 10, 2, '#fff');
+    } else rect(c, 7, cy + 6, 7, 1.6, '#7a3e2e');
+  }
+  c.restore();
+}
+
+function drawChair(c, x, dir = 1, spin = 0) {
+  c.save(); c.translate(x, 0);
+  if (spin) c.scale(Math.cos(S.t * 5 + x), 1);
+  rect(c, -16, FLOOR - 50, 32, 7, '#2b2b30');
+  rect(c, -16 * dir - (dir > 0 ? 4 : -2), FLOOR - 100, 6, 52, '#2b2b30');
+  rect(c, -2, FLOOR - 44, 4, 34, '#555');
+  rect(c, -16, FLOOR - 10, 32, 4, '#444'); circle(c, -14, FLOOR - 3, 3, '#222'); circle(c, 14, FLOOR - 3, 3, '#222');
+  c.restore();
+}
+function drawWorkstation(c, x, person, opts = {}) {
+  drawChair(c, x - 28, 1, opts.spin);
+  if (person) drawPerson(c, x - 28, Object.assign({ sit: true }, person));
+  rect(c, x - 14, FLOOR - 80, 96, 10, '#8a6d4f');
+  rect(c, x - 10, FLOOR - 70, 6, 70, '#6b5139'); rect(c, x + 72, FLOOR - 70, 6, 70, '#6b5139');
+  rect(c, x + 16, FLOOR - 136, 56, 40, '#222'); rect(c, x + 40, FLOOR - 96, 8, 16, '#333');
+  rect(c, x + 19, FLOOR - 133, 50, 33, opts.screen || '#5b8db8');
+  if (opts.screenText) text(c, opts.screenText, x + 44, FLOOR - 116, 11, opts.screenTextColor || '#fff', 'center', 'Heebo');
+  rect(c, x + 10, FLOOR - 86, 40, 6, '#ccc');
+}
+
+// ---------------------------------------------------------------- scenes
+const SCENES = {
+  home: { w: 2400, draw: drawHome },
+  street: { w: 1800, draw: drawStreet },
+  office: { w: 1500, draw: drawOffice },
+  bus: { w: W, draw: drawBus },
+};
+
+function drawHome(c) {
+  const d = S.day;
+  const rooms = [[0, 700, '#d8c6a6'], [700, 1150, '#b7d1d6'], [1150, 1950, '#e3d39a'], [1950, 2400, '#c4ad92']];
+  rooms.forEach(([a, b, col]) => rect(c, a, 0, b - a, FLOOR, col));
+  // wallpaper stripes in bedroom, tiles in bathroom
+  c.fillStyle = 'rgba(0,0,0,.035)'; for (let x = 0; x < 700; x += 36) c.fillRect(x, 0, 14, FLOOR);
+  c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 1.5;
+  for (let y = 180; y < FLOOR; y += 30) { c.beginPath(); c.moveTo(700, y); c.lineTo(1150, y); c.stroke(); }
+  for (let x = 700; x < 1150; x += 30) { c.beginPath(); c.moveTo(x, 180); c.lineTo(x, FLOOR); c.stroke(); }
+  rect(c, 0, 0, 2400, 36, 'rgba(0,0,0,.1)');
+  // floor
+  rect(c, 0, FLOOR, 2400, H - FLOOR, '#7a5a3e');
+  c.fillStyle = 'rgba(0,0,0,.12)'; for (let x = 0; x < 2400; x += 80) c.fillRect(x, FLOOR, 2, H - FLOOR);
+  rect(c, 0, FLOOR - 10, 2400, 10, '#5a4330');
+  // windows
+  drawWindow(c, 210, 120, 150, 110, d >= 4);
+  drawWindow(c, 1790, 120, 120, 100, d >= 5);
+  // kitchen wall clock
+  circle(c, 1520, 110, 26, '#f7f4ec'); c.strokeStyle = '#333'; c.lineWidth = 3; c.stroke();
+  const [hh, mm] = S.clock.split(':').map(Number);
+  const ha = ((hh % 12) + mm / 60) / 12 * Math.PI * 2 + (d >= 6 ? -S.t * 3 : 0), ma = mm / 60 * Math.PI * 2 + (d >= 4 ? S.t * (d - 3) : 0);
+  c.beginPath(); c.moveTo(1520, 110); c.lineTo(1520 + Math.sin(ha) * 13, 110 - Math.cos(ha) * 13); c.moveTo(1520, 110); c.lineTo(1520 + Math.sin(ma) * 20, 110 - Math.cos(ma) * 20); c.stroke();
+  // door frames between rooms
+  [700, 1150, 1950].forEach(x => {
+    rect(c, x - 56, FLOOR - 236, 112, 236, 'rgba(0,0,0,.18)');
+    rect(c, x - 56, FLOOR - 240, 8, 240, '#6b5238'); rect(c, x + 48, FLOOR - 240, 8, 240, '#6b5238'); rect(c, x - 56, FLOOR - 244, 112, 8, '#6b5238');
+  });
+  // hanging lamps
+  [350, 925, 1550, 2150].forEach(x => {
+    rect(c, x - 1, 0, 2, 60, '#333');
+    c.fillStyle = '#4a4036'; c.beginPath(); c.moveTo(x - 24, 82); c.lineTo(x + 24, 82); c.lineTo(x + 12, 60); c.lineTo(x - 12, 60); c.fill();
+    if (S.time === 'night' || d >= 6) { const g = c.createRadialGradient(x, 90, 4, x, 90, 220); g.addColorStop(0, 'rgba(255,220,150,.28)'); g.addColorStop(1, 'rgba(255,220,150,0)'); c.fillStyle = g; c.fillRect(x - 220, 80, 440, 360); }
+  });
+  // coat rack in hallway
+  rect(c, 2060, FLOOR - 200, 6, 200, '#5a4330'); rect(c, 2040, FLOOR - 200, 46, 6, '#5a4330');
+  if (!S.player.dressed || d < 7) rr(c, 2046, FLOOR - 196, 18, 60, 4, '#7d6450');
+}
+
+function drawStreet(c, camX) {
+  const d = S.day;
+  drawSky(c, camX, 0, W, FLOOR, camX, false);
+  // far buildings (parallax)
+  for (let i = 0; i < 14; i++) {
+    const bx = i * 170 + camX * .5 - 60, bh = 140 + ((i * 53) % 120);
+    rect(c, bx, FLOOR - 40 - bh, 140, bh + 40, S.time === 'night' ? '#1c2038' : d >= 6 ? '#3a1518' : '#8e8b96');
+    c.fillStyle = S.time === 'night' || S.time === 'sunset' ? 'rgba(255,215,130,.7)' : 'rgba(255,255,255,.25)';
+    for (let wy = FLOOR - 30 - bh; wy < FLOOR - 60; wy += 26) for (let wx = bx + 14; wx < bx + 126; wx += 28) if ((wx * 7 + wy * 3) % 5 > 1) c.fillRect(wx, wy, 12, 14);
+  }
+  // home house
+  rect(c, 0, 150, 330, FLOOR - 150, '#c9a27a');
+  c.fillStyle = '#7d3b2c'; c.beginPath(); c.moveTo(-20, 155); c.lineTo(165, 70); c.lineTo(350, 155); c.fill();
+  drawWindow(c, 230, 220, 70, 70, false);
+  // lampposts
+  for (let x = 450; x < 1800; x += 420) {
+    rect(c, x, FLOOR - 230, 6, 230, '#333'); rect(c, x - 16, FLOOR - 236, 30, 8, '#333');
+    if (S.time !== 'day' && S.time !== 'morning') { const g = c.createRadialGradient(x, FLOOR - 225, 2, x, FLOOR - 225, 120); g.addColorStop(0, 'rgba(255,220,140,.4)'); g.addColorStop(1, 'rgba(255,220,140,0)'); c.fillStyle = g; c.fillRect(x - 120, FLOOR - 345, 240, 240); }
+  }
+  // trees
+  [620, 1180].forEach(x => { rect(c, x, FLOOR - 110, 12, 110, '#5a4030'); circle(c, x + 6, FLOOR - 140, 46, d >= 5 ? '#3c3a2a' : '#4f7a3e'); circle(c, x - 22, FLOOR - 118, 30, d >= 5 ? '#34321f' : '#5c8a48'); });
+  // sidewalk + road
+  rect(c, 0, FLOOR, 1800, 40, '#a19e98'); c.fillStyle = 'rgba(0,0,0,.12)'; for (let x = 0; x < 1800; x += 60) c.fillRect(x, FLOOR, 2, 40);
+  rect(c, 0, FLOOR + 40, 1800, 8, '#6f6c68'); rect(c, 0, FLOOR + 48, 1800, H - FLOOR - 48, '#3a3a3e');
+  c.fillStyle = '#d8d0a0'; for (let x = 20; x < 1800; x += 110) c.fillRect(x, FLOOR + 74, 50, 5);
+}
+
+function drawOffice(c) {
+  const d = S.day;
+  rect(c, 0, 0, 1500, FLOOR, '#cfd4d6'); rect(c, 0, FLOOR - 120, 1500, 120, '#b9c0c4');
+  rect(c, 0, FLOOR, 1500, H - FLOOR, '#5d6470');
+  c.fillStyle = 'rgba(0,0,0,.08)'; for (let x = 0; x < 1500; x += 40) c.fillRect(x, FLOOR, 1, H - FLOOR);
+  [[330, 150], [900, 150], [1380, 100]].forEach(([x, w]) => drawWindow(c, x - w / 2, 80, w, 130, false));
+  // poster
+  rect(c, 580, 95, 110, 120, '#f5f0e2'); rect(c, 590, 105, 90, 60, d >= 6 ? '#8a1a1a' : '#5b7fa8');
+  text(c, { 5: 'יחד יחד יחד', 6: 'תתעורר', 7: 'הא' }[d] || 'יחד נצליח', 635, 190, 15, '#333');
+  // wall clock
+  circle(c, 1180, 120, 24, '#fff'); c.strokeStyle = '#333'; c.lineWidth = 3; c.stroke();
+  text(c, fmtClock(), 1180, 121, 11, '#222');
+  // ceiling lights
+  for (let x = 150; x < 1500; x += 300) rect(c, x - 60, 26, 120, 10, '#f6f6e8');
+}
+
+function drawBus(c) {
+  const d = S.day;
+  c.save(); c.translate(0, Math.sin(S.busT * 30) * 1.2);
+  drawSky(c, 0, 90, W, 210, 0, false);
+  for (let i = 0; i < 12; i++) {
+    const span = 12 * 170, bx = ((i * 170 - S.busT * 300) % span + span) % span - 120, bh = 60 + ((i * 37) % 90);
+    rect(c, bx, 300 - bh, 130, bh, S.time === 'night' ? '#1d2140' : d >= 6 ? '#40161a' : '#6d7480');
+  }
+  rect(c, 0, 0, W, 90, '#3d5566'); rect(c, 0, 300, W, H - 300, '#3d5566');
+  for (let x = 0; x <= W; x += 160) rect(c, x - 9, 90, 18, 210, '#2f4554');
+  rect(c, 0, 84, W, 8, '#cfd8dc');
+  rect(c, 0, FLOOR, W, H - FLOOR, '#2b2f33');
+  // poles
+  for (let x = 240; x < W; x += 320) rect(c, x, 92, 6, FLOOR - 92, '#c8b04a');
+  // seats + passengers
+  const seats = [140, 300, 480, 660, 820];
+  seats.forEach((x, i) => {
+    rr(c, x - 30, FLOOR - 110, 12, 70, 4, '#8a2f2f'); rr(c, x - 30, FLOOR - 52, 56, 12, 4, '#8a2f2f');
+    if (x === 480) return;
+    let p = null;
+    if (d <= 3) p = i % 2 ? { shirt: '#6b8b5b' } : null;
+    else if (d === 4) p = { shirt: '#777', eyesWide: true, dir: x < 480 ? 1 : -1 };
+    else if (d === 5) p = i === 1 || i === 3 ? { shirt: '#666', faceless: true } : null;
+    else if (d === 7) p = { suit: true, grin: true, dir: x < 480 ? 1 : -1 };
+    if (p) drawPerson(c, x - 10, Object.assign({ sit: true, dir: 1 }, p));
+  });
+  drawPerson(c, 470, Object.assign(look(), { sit: true, walk: 0, dir: 1 }));
+  c.restore();
+}
+
+// ---------------------------------------------------------------- objects
+function drawObj(c, o) {
+  const d = S.day, x = o.x, x0 = x - o.w / 2;
+  switch (o.type) {
+    case 'bed':
+      rect(c, x0, FLOOR - 120, 16, 120, '#5e3f27');
+      rect(c, x0, FLOOR - 60, o.w, 42, '#6b4a2f'); rect(c, x0 + 6, FLOOR - 18, 10, 18, '#5e3f27'); rect(c, x0 + o.w - 16, FLOOR - 18, 10, 18, '#5e3f27');
+      rr(c, x0 + 12, FLOOR - 76, o.w - 16, 20, 5, '#f4f2ee');
+      rr(c, x0 + 20, FLOOR - 92, 54, 18, 7, '#ffffff');
+      rr(c, x0 + 78, FLOOR - 82, o.w - 82, 28, 6, d >= 6 ? '#5a2a3a' : '#4a6fa5');
+      break;
+    case 'alarm':
+      rect(c, x - 26, FLOOR - 58, 52, 58, '#7a5534'); rect(c, x - 22, FLOOR - 40, 44, 3, '#5e3f27');
+      rr(c, x - 19, FLOOR - 80, 38, 22, 4, '#1a1a1a');
+      text(c, fmtClock(), x, FLOOR - 69, 12, '#ff3b30');
+      break;
+    case 'picture': {
+      c.save(); c.translate(x, 210);
+      c.rotate(d === 2 ? .08 : d === 3 ? -.14 : d >= 6 ? Math.sin(S.t * 2) * .1 : 0);
+      rect(c, -40, -32, 80, 64, '#3b2b1d'); rect(c, -33, -25, 66, 50, d >= 6 ? '#5a1010' : '#a8c8e0');
+      if (d <= 3) {
+        c.fillStyle = '#4f7a3e'; c.beginPath(); c.moveTo(-33, 25); c.lineTo(-10, d === 3 ? -20 : -5); c.lineTo(10, 10); c.lineTo(33, d === 3 ? -15 : 0); c.lineTo(33, 25); c.fill();
+      } else {
+        c.save(); c.beginPath(); c.rect(-33, -25, 66, 50); c.clip();
+        drawPerson(c, -2, { y: 70, scale: .7, dir: 1, faceless: d === 5, eyesWide: d === 6, grin: d === 7, suit: true });
+        c.restore();
+      }
+      c.restore(); break;
+    }
+    case 'wardrobe':
+      rr(c, x0, FLOOR - 210, o.w, 210, 4, '#8b6a48'); rect(c, x0 - 5, FLOOR - 216, o.w + 10, 10, '#6e5236');
+      rect(c, x - 1, FLOOR - 200, 2, 190, '#5e4630');
+      if (d === 7) rect(c, x - 3, FLOOR - 200, 8, 190, '#000');
+      circle(c, x - 10, FLOOR - 110, 4, '#d9b46a'); circle(c, x + 10, FLOOR - 110, 4, '#d9b46a');
+      break;
+    case 'sink': {
+      const my = FLOOR - 250;
+      rect(c, x - 49, my - 4, 98, 123, '#8e9aa0');
+      const g = c.createLinearGradient(x - 45, my, x + 45, my + 115); g.addColorStop(0, '#dcebf0'); g.addColorStop(1, '#a9c4cf');
+      c.fillStyle = g; c.fillRect(x - 45, my, 90, 115);
+      // reflection
+      const p = S.player, lag = d >= 4 && S.hist.length ? S.hist[0] : p.x;
+      const near = S.scene === 'home' && Math.abs(p.x - x) < 150;
+      if (near || d >= 6) {
+        c.save(); c.beginPath(); c.rect(x - 45, my, 90, 115); c.clip();
+        const rx = x + clamp(((d >= 6 && !near ? x : lag) - x) * .35, -30, 30);
+        const L = look();
+        drawPerson(c, rx, Object.assign(L, {
+          y: my + 175, scale: .9, walk: 0, dir: d >= 5 ? (p.x < x ? -1 : 1) : -p.dir,
+          eyesWide: d >= 5, grin: d === 7 || (d === 6 && S.mini), armUp: S.mini && S.mini.kind === 'brush' && d < 5,
+        }));
+        c.restore();
+      }
+      c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.moveTo(x - 40, my + 6); c.lineTo(x - 20, my + 6); c.lineTo(x - 40, my + 40); c.fill();
+      rect(c, x - 9, FLOOR - 88, 18, 88, '#eef1f2');
+      rr(c, x - 40, FLOOR - 104, 80, 22, 8, '#f6f8f9');
+      rect(c, x - 3, FLOOR - 120, 6, 18, '#aab'); rect(c, x - 3, FLOOR - 120, 16, 5, '#aab');
+      rect(c, x + 26, FLOOR - 116, 6, 14, '#5aa0c8'); rect(c, x + 25, FLOOR - 124, 8, 8, d >= 7 ? '#c4271e' : '#e8e8e8');
+      break;
+    }
+    case 'fridge': {
+      const pulse = d >= 4 ? Math.sin(S.t * 7) * 1.5 : 0;
+      rr(c, x0 - pulse, FLOOR - 195 - pulse, o.w + pulse * 2, 195 + pulse, 8, '#eef0f0');
+      rect(c, x0, FLOOR - 130, o.w, 3, '#c7cccc'); rect(c, x0 + 10, FLOOR - 180, 5, 40, '#9aa'); rect(c, x0 + 10, FLOOR - 118, 5, 50, '#9aa');
+      rect(c, x0 + 30, FLOOR - 175, 22, 16, d >= 5 ? '#fff' : '#ffd36b');
+      if (d >= 5) text(c, '7', x0 + 41, FLOOR - 167, 11, '#c4271e');
+      break;
+    }
+    case 'stove':
+      rect(c, x0, FLOOR - 95, o.w, 95, '#b8bebe'); rect(c, x0 - 4, FLOOR - 100, o.w + 8, 8, '#7d8585');
+      rect(c, x0 + 20, FLOOR - 70, 100, 50, '#2c2f30');
+      rr(c, x - 30, FLOOR - 126, 50, 26, 4, '#555c60'); rect(c, x + 18, FLOOR - 118, 24, 4, '#333');
+      break;
+    case 'table': {
+      drawChair(c, x - 105, 1); drawChair(c, x + 105, -1);
+      rect(c, x0, FLOOR - 82, o.w, 12, '#7b5232'); rect(c, x0 + 8, FLOOR - 70, 8, 70, '#5e3f27'); rect(c, x0 + o.w - 16, FLOOR - 70, 8, 70, '#5e3f27');
+      const t = curTask(), dinnerTime = t && (t.key === 'dinner') || S.time === 'night';
+      if (dinnerTime) {
+        const plate = (px, food) => {
+          c.fillStyle = '#fafafa'; c.beginPath(); c.ellipse(px, FLOOR - 86, 24, 6, 0, 0, Math.PI * 2); c.fill();
+          if (food) { c.fillStyle = '#e0a040'; c.beginPath(); c.ellipse(px + (d === 6 ? Math.sin(S.t * 6) * 4 : 0), FLOOR - 90, 14, 5, 0, 0, Math.PI * 2); c.fill(); }
+        };
+        if (d === 7) { plate(x - 30, false); rect(c, x - 46, FLOOR - 92, 32, 4, '#5aa0c8'); rect(c, x - 18, FLOOR - 94, 6, 6, '#eee'); }
+        else plate(x - 30, d !== 5 && !(t && t.key !== 'dinner'));
+        if (d === 4) plate(x + 40, true);
+      }
+      break;
+    }
+    case 'frontDoor':
+      rect(c, x0 - 8, FLOOR - 198, o.w + 16, 198, '#4b3322');
+      rr(c, x0, FLOOR - 190, o.w, 190, 3, '#6e4b2e');
+      c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 3; c.strokeRect(x0 + 12, FLOOR - 176, o.w - 24, 70); c.strokeRect(x0 + 12, FLOOR - 96, o.w - 24, 80);
+      circle(c, d >= 5 ? x0 + 74 : x0 + 14, FLOOR - 95, 5, '#d9b46a');
+      if (d === 7) { c.fillStyle = 'rgba(255,40,30,.6)'; c.fillRect(x0 + o.w - 4, FLOOR - 190, 4, 190); }
+      break;
+    case 'homeDoor':
+      rect(c, x0 - 8, FLOOR - 188, o.w + 16, 188, '#5a3b26'); rect(c, x0, FLOOR - 180, o.w, 180, '#7a4f30');
+      circle(c, x0 + 14, FLOOR - 90, 5, '#d9b46a'); rect(c, x - 20, FLOOR - 160, 40, 14, '#e8e2d2');
+      text(c, '12', x, FLOOR - 153, 11, '#333');
+      break;
+    case 'busStop': {
+      rect(c, x - 80, FLOOR - 200, 6, 200, '#3a4a55'); rect(c, x + 70, FLOOR - 200, 6, 200, '#3a4a55');
+      rect(c, x - 90, FLOOR - 206, 176, 12, '#2c3a44');
+      c.fillStyle = 'rgba(220,240,255,.28)'; c.fillRect(x - 74, FLOOR - 190, 144, 120);
+      rect(c, x - 50, FLOOR - 48, 100, 8, '#3a4a55'); rect(c, x - 44, FLOOR - 40, 5, 40, '#3a4a55'); rect(c, x + 38, FLOOR - 40, 5, 40, '#3a4a55');
+      rect(c, x + 104, FLOOR - 250, 6, 250, '#555');
+      circle(c, x + 107, FLOOR - 262, 22, '#2d7a45'); text(c, d === 7 ? '7' : '42', x + 107, FLOOR - 261, 18, '#fff');
+      break;
+    }
+    case 'officeExit':
+      rect(c, x0 - 8, FLOOR - 198, o.w + 16, 198, '#6b7177'); rect(c, x0, FLOOR - 190, o.w, 190, '#9aa2a8');
+      rect(c, x0 + 12, FLOOR - 104, 30, 6, '#555');
+      rect(c, x - 34, FLOOR - 232, 68, 22, '#1e8a3c'); text(c, d === 7 ? 'כניסה' : 'יציאה', x, FLOOR - 220, 14, '#fff');
+      break;
+    case 'cooler':
+      rect(c, x - 20, FLOOR - 90, 40, 90, '#e8eaec'); rr(c, x - 18, FLOOR - 140, 36, 52, 10, d >= 5 ? '#6a8ea0' : '#8fd0f0');
+      rect(c, x - 6, FLOOR - 70, 12, 6, '#3a7bd5');
+      break;
+    case 'yael': case 'dani': case 'moshe': {
+      const empty = S.flags.officeEmpty || (o.id === 'moshe' && d >= 3 && d < 7);
+      let person = null;
+      if (!empty) {
+        const toward = S.player.x < x - 28 ? -1 : 1;
+        person = { shirt: o.shirt, hair: o.id === 'yael' ? '#7a3a1a' : '#2a2018', dir: 1 };
+        if (d === 2 && o.id === 'dani') person.dir = toward;
+        if (d === 5) person.faceless = true;
+        if (d === 6) Object.assign(person, { dir: toward, eyesWide: true });
+        if (d === 7) Object.assign(person, { dir: toward, suit: true, grin: true, hair: '#3a2a1e', shirt: null });
+      }
+      drawWorkstation(c, x, person, { spin: S.flags.officeEmpty, screen: d >= 6 ? '#7a1a1a' : '#5b8db8' });
+      break;
+    }
+    case 'computer': {
+      const done = S.tasks.find(t => t.key === 'work' && t.done);
+      const st = d === 6 && done ? 'WAKE UP' : d === 7 && done ? 'HELP ME' : d === 3 && done ? '...' : '';
+      drawWorkstation(c, x, null, { screen: st ? '#111' : '#5b8db8', screenText: st, screenTextColor: '#ff4a3a' });
+      break;
+    }
+  }
+}
+
+function drawPrompt(c, o) {
+  const top = o.top ?? FLOOR - o.h;
+  const label = o.name;
+  c.font = '800 15px Heebo, Arial, sans-serif';
+  const w = c.measureText(label).width + 44, y = top - 30;
+  rr(c, o.x - w / 2, y - 14, w, 28, 6, 'rgba(12,11,10,.85)');
+  rr(c, o.x + w / 2 - 26, y - 10, 20, 20, 4, '#fbe98f');
+  text(c, 'E', o.x + w / 2 - 16, y + 1, 13, '#2c2512');
+  text(c, label, o.x + w / 2 - 34, y + 1, 15, '#f1e9d8', 'right');
+}
+function drawArrow(c, o) {
+  const top = (o.top ?? FLOOR - o.h) - 62 + Math.sin(S.t * 5) * 5;
+  const jx = S.day === 7 ? rand(-3, 3) : 0;
+  c.fillStyle = S.day >= 6 ? '#ff4a3a' : '#fbe98f';
+  c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(o.x - 11 + jx, top); c.lineTo(o.x + 11 + jx, top); c.lineTo(o.x + jx, top + 14); c.closePath(); c.fill(); c.stroke();
+}
+
+function hintObj() {
+  const t = curTask(); if (!t) return null;
+  const o = obj(t.obj); if (!o) return null;
+  if (o.scene === S.scene) return o;
+  if (S.scene === 'home') return obj('frontDoor');
+  if (S.scene === 'office') return obj('officeExit');
+  if (S.scene === 'street') return o.scene === 'home' ? obj('homeDoor') : obj('busStop');
+  return null;
+}
+function nearObj() {
+  let best = null, bd = 1e9;
+  for (const o of S.objs) {
+    if (o.scene !== S.scene || !o.name) continue;
+    const dd = Math.abs(S.player.x - o.x);
+    if (dd < o.w / 2 + 22 && dd < bd) { best = o; bd = dd; }
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------- post effects
+const noiseCv = document.createElement('canvas'); noiseCv.width = 192; noiseCv.height = 108;
+const nctx = noiseCv.getContext('2d'), nImg = nctx.createImageData(192, 108);
+function refreshNoise() {
+  const a = nImg.data;
+  for (let i = 0; i < a.length; i += 4) { const v = Math.random() * 255; a[i] = a[i + 1] = a[i + 2] = v; a[i + 3] = 255; }
+  nctx.putImageData(nImg, 0, 0);
+}
+let cssFilter = '';
+function applyCssFilter() {
+  const f = FX[S.mode === 'title' ? 1 : S.day];
+  const hue = S.day === 7 && S.mode !== 'title' ? (S.t * 40) % 360 : f.hue;
+  const s = `saturate(${f.sat}) contrast(${f.con}) hue-rotate(${hue.toFixed(0)}deg)`;
+  if (s !== cssFilter) { cv.style.filter = s; cssFilter = s; }
+}
+
+// ---------------------------------------------------------------- render
+let frame = 0;
+function render() {
+  const d = S.mode === 'title' ? 1 : S.day, f = FX[d], c = ctx;
+  frame++;
+  c.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  c.clearRect(0, 0, W, H);
+  const sc = SCENES[S.scene];
+  const camX = clamp(S.player.x - W / 2, 0, sc.w - W);
+  const sh = f.shake + (S.shakeBurst > 0 ? 9 : 0);
+  c.save();
+  c.translate(-camX + (sh ? rand(-sh, sh) : 0), sh ? rand(-sh, sh) : 0);
+  if (d === 7 && S.mode !== 'title') { const k = Math.sin(S.t * 1.3) * .035; c.transform(1, 0, k, 1, -k * FLOOR, 0); }
+  sc.draw(c, camX);
+  if (S.scene !== 'bus') {
+    for (const o of S.objs) if (o.scene === S.scene) drawObj(c, o);
+    if (S.scene === 'street') for (const n of S.npcs) {
+      if (n.copy) drawPerson(c, n.x, { suit: true, grin: true, eyesWide: true, dir: S.player.x < n.x ? -1 : 1, walk: n.walk });
+      else drawPerson(c, n.x, { shirt: n.shirt, walk: n.walk, dir: n.stand ? (S.player.x < n.x ? -1 : 1) : (d === 5 ? -Math.sign(n.v) : Math.sign(n.v)), faceless: d === 5, eyesWide: n.stand });
+    }
+    if (S.mode !== 'title') {
+      const p = S.player;
+      drawPerson(c, p.x, look());
+      if (S.laughT > 0) text(c, 'הא הא הא', p.x + rand(-2, 2), FLOOR - 140 + rand(-2, 2), 18, '#ff4a3a', 'center', 'Karantina');
+      if (S.mode === 'play' && !S.dialog) {
+        const h = hintObj(); if (h && h.scene === S.scene) drawArrow(c, h);
+        const n = nearObj(); if (n) drawPrompt(c, n);
+      }
+    }
+  }
+  c.restore();
+  // night tint
+  if (S.time === 'night' && S.scene !== 'bus' && d < 6) { c.fillStyle = 'rgba(15,20,55,.28)'; c.fillRect(0, 0, W, H); }
+  if (S.scene === 'office' && (S.flags.officeEmpty || d >= 5) && Math.random() < .06) { c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, 0, W, H); }
+  if (S.flags.flicker > 0 && Math.random() < .5) { c.fillStyle = 'rgba(0,0,0,.7)'; c.fillRect(0, 0, W, H); }
+  // vignette
+  const g = c.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, W * .65);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${f.vig})`);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  // noise
+  if (f.noise) {
+    if (frame % 3 === 0) refreshNoise();
+    c.save(); c.globalAlpha = f.noise; c.globalCompositeOperation = 'overlay'; c.imageSmoothingEnabled = false;
+    c.drawImage(noiseCv, 0, 0, W, H); c.restore();
+  }
+  // glitch slices
+  if (f.glitch && Math.random() < f.glitch * 3) {
+    const n = 1 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) {
+      const y = rand(0, H - 30), h = rand(4, 30), dx = rand(-40, 40);
+      c.drawImage(cv, 0, y * SCALE, W * SCALE, h * SCALE, dx, y, W, h);
+      c.fillStyle = Math.random() < .5 ? 'rgba(255,0,40,.12)' : 'rgba(0,220,255,.1)'; c.fillRect(0, y, W, h);
+    }
+  }
+  if (S.flags.crack) drawCrack(c);
+  applyCssFilter();
+}
+const CRACK = [];
+function drawCrack(c) {
+  if (!CRACK.length) {
+    const cx = W * .52, cy = H * .46;
+    for (let i = 0; i < 16; i++) {
+      let a = i / 16 * Math.PI * 2 + rand(-.2, .2), x = cx, y = cy; const pts = [[x, y]];
+      for (let j = 0; j < 7; j++) { a += rand(-.4, .4); const r = rand(30, 90); x += Math.cos(a) * r; y += Math.sin(a) * r; pts.push([x, y]); }
+      CRACK.push(pts);
+    }
+  }
+  c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.6;
+  CRACK.forEach(pts => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); });
+  c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = .8;
+  CRACK.forEach(pts => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x + 1.5, y + 1) : c.moveTo(x + 1.5, y + 1)); c.stroke(); });
+}
+
+// ---------------------------------------------------------------- HUD & UI
+function fmtClock() {
+  const c = S.clock, d = S.day, [h, m] = c.split(':');
+  if (d === 2) return h + ':' + String(+m + (+m < 40 ? 60 : 0)).padStart(2, '0');
+  if (d === 5) return '??:??';
+  if (d === 6) return c.split('').reverse().join('');
+  if (d === 7) return ['7:77', '77:7', '00:00', '7:07', '??:77'][Math.floor(S.t * 3) % 5];
+  return c;
+}
+function updateHUD() {
+  $('hudDay').textContent = 'יום ' + S.day;
+  const ol = $('hudTasks'); ol.innerHTML = '';
+  // the note only fits a few lines: the last finished task, the current one and what comes next
+  const from = Math.max(0, S.idx - 1), to = Math.min(S.tasks.length, from + 5);
+  const dots = () => { const li = document.createElement('li'); li.className = 'more'; li.textContent = '···'; ol.appendChild(li); };
+  if (from > 0) dots();
+  S.tasks.slice(from, to).forEach((t, j) => {
+    const li = document.createElement('li');
+    li.textContent = taskLabel(t);
+    if (t.done) li.className = 'done'; else if (from + j === S.idx) li.className = 'cur';
+    ol.appendChild(li);
+  });
+  if (to < S.tasks.length) dots();
+  $('hud').classList.toggle('mad', S.day >= 6);
+}
+let lastClock = '';
+function tickHUD() {
+  const s = fmtClock(); if (s !== lastClock) { $('hudClock').textContent = s; lastClock = s; }
+}
+
+// dialog
+function say(lines) {
+  return new Promise(res => {
+    S.dialog = { lines: lines.slice(), i: 0, shown: 0, res };
+    $('dialog').hidden = false; $('dialog').classList.toggle('mad', S.day === 7);
+    renderDialog();
+  });
+}
+function splitSpeaker(line) {
+  const m = /^([^:\s]{1,8}|אני|השתקפות): (.*)$/.exec(line);
+  return m ? [m[1], m[2]] : [null, line];
+}
+function renderDialog() {
+  const D = S.dialog; if (!D) return;
+  const [sp, body] = splitSpeaker(D.lines[D.i]);
+  const shown = body.slice(0, Math.floor(D.shown));
+  const el = $('dialogText'); el.textContent = '';
+  if (sp) { const b = document.createElement('b'); b.textContent = sp; el.appendChild(b); }
+  el.appendChild(document.createTextNode(shown));
+}
+function advanceDialog() {
+  const D = S.dialog; if (!D) return;
+  const len = splitSpeaker(D.lines[D.i])[1].length;
+  if (D.shown < len) { D.shown = len; renderDialog(); return; }
+  D.i++; D.shown = 0;
+  if (D.i >= D.lines.length) { S.dialog = null; $('dialog').hidden = true; D.res(); }
+  else renderDialog();
+}
+
+// fades & cards
+async function fadeOut(ms = 500) { const f = $('fade'); f.style.transitionDuration = ms + 'ms'; f.style.opacity = 1; await wait(ms); }
+async function fadeIn(ms = 500) { const f = $('fade'); f.style.transitionDuration = ms + 'ms'; f.style.opacity = 0; await wait(ms); }
+async function card(t, s, ms = 2200) {
+  $('cardT').textContent = t; $('cardS').textContent = s || '';
+  $('cardBox').classList.add('show'); await wait(ms);
+  $('cardBox').classList.remove('show'); await wait(750);
+}
+function spawnWhisper(s) {
+  const el = document.createElement('span');
+  el.textContent = s;
+  el.style.left = rand(5, 75) + '%'; el.style.top = rand(8, 70) + '%';
+  el.style.fontSize = `calc(var(--u) * ${rand(22, S.day === 7 ? 70 : 40).toFixed(0)})`;
+  el.style.transform = `rotate(${rand(-12, 12)}deg)`;
+  $('whispers').appendChild(el);
+  setTimeout(() => el.remove(), 3300);
+}
+
+// ---------------------------------------------------------------- mini games
+function runMini(kind) {
+  return new Promise(res => {
+    const d = S.day, m = { kind, res, n: 0 };
+    if (kind === 'brush') { m.need = d === 7 ? 16 : 10; m.last = null; }
+    else {
+      m.seq = d === 6 ? 'WAKEUP' : d === 7 ? 'HELPME' : Array.from({ length: d >= 5 ? 9 : 6 }, () => 'ASDFJKL'[Math.floor(Math.random() * 7)]).join('');
+      m.need = m.seq.length;
+    }
+    S.mini = m; S.mode = 'mini'; $('mini').hidden = false; renderMini();
+  });
+}
+function renderMini() {
+  const m = S.mini; if (!m) return;
+  const brush = m.kind === 'brush';
+  $('miniTitle').textContent = brush ? (S.day === 7 ? 'מצחצח מצחצח מצחצח' : 'מצחצח שיניים') : (S.day >= 6 ? 'עובד?' : 'עובד');
+  const k = $('miniKey'); k.innerHTML = '';
+  if (brush) {
+    const l = document.createElement('span'), r = document.createElement('span');
+    l.textContent = '◀ '; r.textContent = ' ▶';
+    (m.last === 'L' ? r : l).className = 'on';
+    k.append(l, r);
+  } else {
+    [...m.seq].forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch; s.className = i < m.n ? 'd' : i === m.n ? 'n' : ''; k.appendChild(s); });
+  }
+  $('miniHelp').textContent = brush ? 'ימינה ושמאלה לסירוגין (חיצים, A/D, או E)' : 'הקלידו את האותיות לפי הסדר (מקלדת באנגלית)';
+  $('miniBar').style.width = (m.n / m.need * 100) + '%';
+}
+function miniInput(code) {
+  const m = S.mini; if (!m) return;
+  if (m.kind === 'brush') {
+    const k = code === 'left' ? 'L' : code === 'right' ? 'R' : code === 'act' ? (m.last === 'L' ? 'R' : 'L') : null;
+    if (!k || k === m.last) return;
+    m.last = k; m.n++; sfx.brush();
+  } else {
+    const want = m.seq[m.n];
+    if (code === 'act' || code === 'Key' + want) { m.n++; sfx.click(); }
+    else if (/^Key/.test(code)) { sfx.err(); const el = $('mini'); el.classList.remove('err'); void el.offsetWidth; el.classList.add('err'); return; }
+    else return;
+  }
+  renderMini();
+  if (m.n >= m.need) { S.mini = null; $('mini').hidden = true; m.res(); }
+}
+
+// ---------------------------------------------------------------- flow
+function setClock(s) { S.clock = s; }
+const TIMEFX = {
+  brushAM: () => setClock('07:12'), brush1: () => setClock('07:12'), dress: () => setClock('07:31'),
+  toWork: () => { S.time = 'day'; setClock('08:58'); }, work: () => { S.time = 'sunset'; setClock('17:04'); },
+  goHome: () => setClock('18:10'), eat: () => setClock('18:42'), dinner: () => { S.time = 'night'; setClock('20:15'); },
+  brushPM: () => setClock('22:20'), brush4: () => setClock('22:20'),
+};
+
+function targetScene() { const t = curTask(); return t ? (obj(t.obj) || {}).scene : null; }
+
+async function goTo(scene, x, dir) {
+  sfx.door(); await fadeOut(350);
+  S.scene = scene; S.player.x = x; S.player.dir = dir; S.hist = [];
+  await fadeIn(350);
+}
+async function ride(dest, lines) {
+  await fadeOut(500);
+  S.scene = 'bus'; S.busT = 0; sfx.bus();
+  await fadeIn(500);
+  if (lines) await say(lines); else await wait(1600);
+  await fadeOut(500);
+  if (dest === 'office') { S.scene = 'office'; S.player.x = 1000; S.player.dir = 1; }
+  else { S.scene = 'home'; S.player.x = 2140; S.player.dir = -1; }
+  S.hist = [];
+  await fadeIn(500);
+}
+
+async function travel(o) {
+  const ts = targetScene();
+  if (o.id === 'frontDoor') {
+    if (!ts || ts === 'home') return say(['אין לי לאן ללכת עכשיו.']);
+    if (S.day === 5 && !S.flags.wrongDoor) {
+      S.flags.wrongDoor = 1; sfx.glitch();
+      await goTo('home', 300, 1);
+      return say(['...', 'זה חדר השינה.', 'יצאתי מהדלת הראשית. נכון?']);
+    }
+    return goTo('street', 240, 1);
+  }
+  if (o.id === 'homeDoor') {
+    if (ts === 'home') return goTo('home', 2140, -1);
+    return say(['אני צריך לתפוס את האוטובוס.']);
+  }
+  if (o.id === 'busStop') {
+    if (ts === 'office') return ride('office');
+    if (ts === 'home') return ride('home');
+    return say(['אין לי לאן לנסוע.']);
+  }
+  if (o.id === 'officeExit') {
+    if (ts === 'office') return say(['עוד לא סיימתי לעבוד.']);
+    return goTo('street', 1250, 1);
+  }
+}
+
+function flavor(o) {
+  const d = S.day;
+  if (['yael', 'dani', 'moshe'].includes(o.id)) {
+    if (S.flags.officeEmpty) return ['הכיסא מסתובב.', 'אין פה אף אחד.'];
+    if (o.id === 'moshe' && d >= 3 && d < 7) return ['שולחן ריק.', 'מי ישב פה?', '...אף אחד, כנראה.'];
+    return { yael: YAEL, dani: DANI, moshe: MOSHE }[o.id][d];
+  }
+  switch (o.type) {
+    case 'bed': return d >= 6 ? ['המיטה עדיין חמה.', 'ישנתי בכלל?'] : ['עוד מוקדם לישון.'];
+    case 'alarm': return ['השעון מראה ' + fmtClock() + '.'].concat(d === 4 ? ['הוא מתקתק אחורה.'] : d >= 6 ? ['הוא מתקתק בקצב של הלב שלי.'] : []);
+    case 'picture': return PIC[d];
+    case 'wardrobe': return S.player.dressed ? ['כבר התלבשתי.'] : ['קודם כל לצחצח שיניים.'];
+    case 'sink': return MIRROR[d];
+    case 'fridge': return d >= 6 ? ['אני לא פותח את זה שוב.'] : ['לא רעב עכשיו.'];
+    case 'table': return ['עוד לא זמן לאכול.'];
+    case 'cooler': return d >= 5 ? ['המים במכל לא זזים.', 'גם כשאני מנער אותו.'] : ['מים קרים. רגילים לגמרי.'];
+    case 'computer': return S.tasks.some(t => t.key === 'work' && t.done) ? ['סיימתי לעבוד להיום.'] : ['קודם צריך להגיע לפה.'];
+  }
+  return ['...'];
+}
+
+const HOOKS = {
+  3: {
+    brushAM: async lines => {
+      await say(['שיניים נקיות.', 'עכשיו להתלבש, ואז...']);
+      sfx.glitch(); S.shakeBurst = .3;
+      await fadeOut(150);
+      await card('', '...', 1600);
+      S.tasks.forEach(t => { if (t.key === 'dress' || t.key === 'toWork') t.done = true; });
+      S.idx = S.tasks.findIndex(t => !t.done);
+      S.player.dressed = true; S.time = 'day'; setClock('09:40');
+      S.scene = 'office'; S.player.x = 1000; S.player.dir = 1; S.hist = [];
+      updateHUD();
+      await fadeIn(900);
+      await say(['רגע.', 'איך הגעתי לפה?', 'אני לא זוכר שהתלבשתי. אני לא זוכר את האוטובוס.', 'השעה 09:40.']);
+    },
+  },
+  4: {
+    work: async () => {
+      sfx.glitch(); S.flags.flicker = 2.2;
+      await wait(1100);
+      S.flags.officeEmpty = true; sfx.glitch();
+      await wait(1300);
+      await say(['...', 'לאן כולם הלכו?', 'הכיסאות עדיין מסתובבים.']);
+    },
+  },
+  7: {
+    goHome: async () => {
+      await goTo('home', 420, 1);
+      S.time = 'night';
+      await say(['יצאתי מהמשרד.', 'ונכנסתי לחדר השינה שלי.', 'הא.']);
+    },
+  },
+};
+
+async function doTask(t) {
+  S.mode = 'cut';
+  if (t.mini) await runMini(t.mini);
+  S.mode = 'cut';
+  t.done = true; S.idx++;
+  TIMEFX[t.key]?.();
+  if (t.key === 'dress') S.player.dressed = true;
+  updateHUD(); sfx.ding();
+  const lines = (TEXT[t.key] || {})[S.day];
+  const hook = (HOOKS[S.day] || {})[t.key];
+  if (hook) await hook(lines);
+  else if (t.key === 'toWork') await ride('office', lines);
+  else if (t.key === 'goHome') await ride('home', lines);
+  else if (t.key === 'sleep') { if (S.day === 7) return finale(); if (lines) await say(lines); return nextDay(); }
+  else if (lines) await say(lines);
+  S.mode = 'play';
+}
+
+async function tryInteract() {
+  const o = nearObj(); if (!o) return;
+  S.mode = 'cut';
+  try {
+    const t = curTask();
+    if (t && t.obj === o.id) return await doTask(t);
+    if (o.travel) await travel(o);
+    else await say(flavor(o));
+  } finally { if (S.mode === 'cut') S.mode = 'play'; }
+}
+
+async function startDay(n) {
+  S.mode = 'cut';
+  S.day = n; S.tasks = makeTasks(n); S.idx = 0; S.scene = 'home'; S.time = 'morning'; setClock('07:00');
+  S.flags = {}; S.objs = buildObjects(n); S.npcs = makeNpcs(n); S.hist = []; S.laughT = 0;
+  Object.assign(S.player, { x: 290, dir: 1, walk: 0, dressed: false });
+  S.invertUntil = 0; S.nextInvert = S.t + 10; S.nextWhisper = S.t + 6; S.nextLaugh = S.t + 8;
+  CRACK.length = 0;
+  $('fade').style.transitionDuration = '0ms'; $('fade').style.opacity = 1;
+  $('hud').hidden = false; updateHUD(); setDrone(n);
+  await wait(300);
+  await card('יום ' + n, SUB[n], 2300);
+  await fadeIn(900);
+  sfx.alarm();
+  await say(WAKE[n]);
+  S.mode = 'play';
+}
+async function nextDay() { await fadeOut(1400); await startDay(S.day + 1); }
+
+async function finale() {
+  S.mode = 'cut';
+  await say(['המיטה.', 'סוף סוף.']);
+  S.shakeBurst = 99; sfx.laugh(12); S.laughT = 99;
+  const words = ['לצחצח שיניים', 'להתלבש', 'ללכת לעבודה', 'לעבוד', 'לחזור הביתה', 'לאכול', 'לצחצח שיניים', 'לישון', 'לצחצח', 'שיניים', 'הא', 'הא', 'הא הא', 'הא'];
+  for (let i = 0; i < words.length; i++) {
+    $('big').textContent = words[i]; sfx.glitch(); if (i % 4 === 0) sfx.laugh(4);
+    await wait(Math.max(130, 650 - i * 45));
+  }
+  $('big').textContent = '';
+  S.flags.crack = true; sfx.crack();
+  await wait(1700);
+  setDrone(0);
+  $('fade').style.transitionDuration = '0ms'; $('fade').style.opacity = 1;
+  S.shakeBurst = 0; S.laughT = 0; $('hud').hidden = true;
+  await wait(1400);
+  await card('', 'ביום השמיני הוא לא קם.', 2600);
+  await card('', 'השעון המעורר צלצל, וצלצל, וצלצל.', 2600);
+  await card('', 'אומרים שהוא עדיין שם. מצחצח שיניים.', 3000);
+  S.mode = 'end';
+  try { localStorage.setItem('seven-days-done', '1'); } catch (e) {}
+  $('daySel').hidden = false;
+  $('end').hidden = false; $('againBtn').focus();
+}
+
+// ---------------------------------------------------------------- update
+function update(dt) {
+  S.t += dt;
+  if (S.shakeBurst > 0) S.shakeBurst -= dt;
+  if (S.laughT > 0) S.laughT -= dt;
+  if (S.flags.flicker > 0) S.flags.flicker -= dt;
+  if (S.scene === 'bus') S.busT += dt;
+  const p = S.player, d = S.day;
+  // dialog typewriter
+  if (S.dialog) {
+    const D = S.dialog, len = splitSpeaker(D.lines[D.i])[1].length;
+    if (D.shown < len) { D.shown = Math.min(len, D.shown + dt * 48); renderDialog(); }
+  }
+  // movement
+  p.moving = false;
+  if (S.mode === 'play' && !S.dialog) {
+    let dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    if (S.t < S.invertUntil) dx = -dx;
+    if (dx) {
+      const sp = SPEED * (d === 7 ? 1 + Math.sin(S.t * 3) * .35 : 1);
+      p.x = clamp(p.x + dx * sp * dt, 40, SCENES[S.scene].w - 40);
+      p.dir = dx; p.walk += dt * 11; p.moving = true;
+    }
+  }
+  S.hist.push(p.x); if (S.hist.length > 40) S.hist.shift();
+  // street people
+  if (S.scene === 'street') for (const n of S.npcs) {
+    if (n.copy) { const tx = p.x + n.off, dd = tx - n.x; if (Math.abs(dd) > 4) { n.x += Math.sign(dd) * Math.min(Math.abs(dd), 70 * dt); n.walk += dt * 8; } }
+    else if (n.v) { n.x += n.v * dt; n.walk += dt * 9; if (n.x < -60) n.x = 1860; if (n.x > 1860) n.x = -60; }
+  }
+  if (S.mode !== 'play' && S.mode !== 'mini') return;
+  // weirdness timers
+  if (WHISPERS[d] && S.t > S.nextWhisper) {
+    spawnWhisper(WHISPERS[d][Math.floor(Math.random() * WHISPERS[d].length)]);
+    S.nextWhisper = S.t + (d === 5 ? rand(12, 20) : d === 6 ? rand(5, 9) : rand(1.5, 3));
+  }
+  if (d >= 6 && S.t > S.nextInvert) {
+    S.invertUntil = S.t + (d === 6 ? 4 : 3); S.nextInvert = S.t + (d === 6 ? rand(14, 20) : rand(8, 12));
+    spawnWhisper(d === 6 ? 'שמאל זה ימין' : 'הא'); sfx.glitch();
+  }
+  if (d === 7 && S.t > S.nextLaugh) { S.laughT = 1.6; sfx.laugh(5); S.nextLaugh = S.t + rand(9, 15); }
+  // day 7: the bed runs away
+  if (d === 7 && S.mode === 'play' && !S.dialog && S.scene === 'home') {
+    const t = curTask();
+    if (t && t.key === 'sleep') {
+      const b = obj('bed'), runs = S.flags.bedRuns || 0;
+      if (runs < 3 && Math.abs(p.x - b.x) < 170) {
+        b.x = [2060, 440, 1830][runs]; S.flags.bedRuns = runs + 1;
+        sfx.glitch(); sfx.laugh(3); S.shakeBurst = .5; S.laughT = 1.2; spawnWhisper('הא');
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------- loop
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  update(dt); render(); tickHUD();
+  requestAnimationFrame(loop);
+}
+
+// ---------------------------------------------------------------- input
+const isMove = (c, side) => side === 'left' ? (c === 'ArrowLeft' || c === 'KeyA') : (c === 'ArrowRight' || c === 'KeyD');
+function action() {
+  if (S.dialog) return advanceDialog();
+  if (S.mini) return miniInput('act');
+  if (S.mode === 'play') tryInteract();
+}
+addEventListener('keydown', e => {
+  const c = e.code;
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(c)) e.preventDefault();
+  initAudio();
+  if (S.mode === 'title' || S.mode === 'end') return;
+  if (S.mini && !S.dialog) {
+    if (e.repeat) return;
+    if (S.mini.kind === 'type') miniInput(c);
+    else if (isMove(c, 'left')) miniInput('left');
+    else if (isMove(c, 'right')) miniInput('right');
+    else if (c === 'KeyE' || c === 'Space' || c === 'Enter') miniInput('act');
+    return;
+  }
+  if (isMove(c, 'left')) keys.left = true;
+  if (isMove(c, 'right')) keys.right = true;
+  if ((c === 'KeyE' || c === 'Space' || c === 'Enter') && !e.repeat) action();
+});
+addEventListener('keyup', e => {
+  if (isMove(e.code, 'left')) keys.left = false;
+  if (isMove(e.code, 'right')) keys.right = false;
+});
+addEventListener('blur', () => { keys.left = keys.right = false; });
+$('dialog').addEventListener('click', () => advanceDialog());
+
+function bindHold(id, side) {
+  const el = $(id);
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault(); initAudio();
+    if (S.mini) { miniInput(side); return; }
+    keys[side] = true;
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => { keys[side] = false; }));
+}
+bindHold('tLeft', 'left'); bindHold('tRight', 'right');
+$('tAct').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); action(); });
+addEventListener('touchstart', () => $('touch').classList.add('on'), { once: true, passive: true });
+if (matchMedia('(pointer: coarse)').matches) $('touch').classList.add('on');
+
+// ---------------------------------------------------------------- screens & boot
+function begin(day) {
+  initAudio();
+  $('title').hidden = true; $('end').hidden = true;
+  startDay(day);
+}
+$('startBtn').addEventListener('click', () => begin(1));
+$('againBtn').addEventListener('click', () => begin(1));
+for (let i = 1; i <= 7; i++) {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = 'יום ' + i;
+  b.addEventListener('click', () => begin(i));
+  $('daySel').appendChild(b);
+}
+// the day picker is a shortcut for replaying; show it only after the game was finished once, or with #days
+let unlocked = false;
+try { unlocked = localStorage.getItem('seven-days-done') === '1'; } catch (e) {}
+const hashDay = /^#?day([1-7])$/.exec(location.hash);
+$('daySel').hidden = !(unlocked || location.hash === '#days' || hashDay);
+
+function resize() {
+  const wrap = $('wrap'), cs = getComputedStyle(wrap);
+  const aw = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const ah = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const w = Math.min(aw, ah * 16 / 9);
+  const g = $('game'); g.style.width = w + 'px'; g.style.height = (w * 9 / 16) + 'px';
+  g.style.setProperty('--u', (w / 960) + 'px');
+}
+addEventListener('resize', resize); resize();
+
+// title backdrop: an ordinary morning
+S.objs = buildObjects(1); S.npcs = makeNpcs(1); S.player.x = 480;
+$('fade').style.opacity = 0;
+requestAnimationFrame(loop);
+if (hashDay) begin(+hashDay[1]);
+window.G = { S, startDay, begin, doTask, curTask };
+</script>
+</body>
+</html>
