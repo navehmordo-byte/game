@@ -108,6 +108,11 @@ button.go {
   background: var(--note); color: var(--note-ink); border: 0; cursor: pointer; transform: rotate(-1deg); box-shadow: 0 6px 18px rgba(0,0,0,.5);
 }
 button.go:hover { transform: rotate(1deg) scale(1.03); }
+button.go.fun { background: #ff9ad5; color: #3a0f2a; transform: rotate(1.5deg); }
+button.go.fun:hover { transform: rotate(-1deg) scale(1.03); }
+.modes { display: flex; gap: calc(var(--u) * 34); flex-wrap: wrap; justify-content: center; }
+.mode { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 10); font-size: calc(var(--u) * 15); color: var(--muted); }
+body.portrait .mode { font-size: 14px; }
 button.go:focus-visible { outline: 3px solid var(--paper); outline-offset: 4px; }
 .days { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: calc(var(--u) * 14); color: var(--muted); }
 .days button { font: inherit; background: transparent; color: var(--muted); border: 1px solid rgba(241,233,216,.25); padding: 2px 10px; cursor: pointer; }
@@ -203,7 +208,10 @@ body.portrait .days { font-size: 14px; }
         <span><kbd>✋</kbd> לעשות דברים</span>
         <span>או פשוט לגעת במה שרוצים על המסך</span>
       </div>
-      <button class="go" id="startBtn" type="button">להתחיל את היום</button>
+      <div class="modes">
+        <div class="mode"><button class="go" id="startBtn" type="button">מצב מפחיד</button><span>9 ימים. השגרה מתפרקת.</span></div>
+        <div class="mode"><button class="go fun" id="funnyBtn" type="button">מצב מצחיק</button><span>7 ימים. השגרה משתגעת, אבל בכיף.</span></div>
+      </div>
       <button class="ghost k-touch" id="fsBtn" type="button">מסך מלא</button>
       <div class="days" id="daySel" aria-label="קפיצה ליום"></div>
     </div>
@@ -442,12 +450,148 @@ const REALM = {
     },
   },
 };
+// ---------------------------------------------------------------- funny mode: 7 silly days
+// Runs on day 1's world (S.day = 1, so none of the scary machinery fires); S.funny holds the funny day.
+const FUNNY_FX = { sat: 1.15, con: 1.02, hue: 0, noise: 0, glitch: 0, shake: 0, vig: .08 };
+const FUNNY = {
+  1: {
+    sub: 'יום רגיל. כמעט.',
+    wake: ['חררר... פיייו...', 'רגע. השעון המעורר נוחר?', 'טוב, לפחות הוא ישן טוב. בוקר טוב!', 'HINT'],
+    tasks: {
+      brushAM: ['השיניים מבריקות כל כך שאני צריך משקפי שמש.'], dress: ['חולצה, עניבה, מכנסיים. הכול במקום. מרשים.'],
+      toWork: ['הנהג שר כל הדרך.', 'בזיוף. אבל עם המון רגש.'], work: ['עבדתי קשה.', 'כלומר, הזזתי קבצים מתיקייה לתיקייה.'],
+      goHome: ['עוד יום עבודה מאחוריי.', 'ועוד בערך 9,000 לפניי.'], eat: ['סנדוויץ\'. קלאסיקה.'],
+      dinner: ['פסטה. אני שף.', 'שף של פסטה. רק פסטה.'], brushPM: ['מבריק. אני מסנוור את עצמי במראה.'], sleep: ['לילה טוב, עולם.'],
+    },
+    flavor: {
+      alarm: ['השעון המעורר נוחר.', 'הוא עבד קשה הלילה. אני לא אעיר אותו.'],
+      dani: ['דני: למה הספר על דבק היה כל כך מעניין?', 'דני: כי לא יכולתי להניח אותו! חחחח!', '...'],
+      yael: ['יעל: שלחת את הדוח?', 'יעל: סתם. אני יודעת שלא.'], moshe: ['משה: סוף סוף יום ראשון.', 'משה: כבר מחכה ליום שישי.'],
+    },
+  },
+  2: {
+    sub: 'יום שיער רע.',
+    wake: ['קמתי.', 'הסתכלתי במראה.', 'השיער שלי החליט להתחיל קריירה משלו.'],
+    tasks: {
+      brushAM: ['רגע. זה מיונז.', 'מי שם מיונז בשפופרת של משחת השיניים?!', '...הטעם דווקא לא רע.'],
+      dress: ['ניסיתי לסדר את השיער עם העניבה.', 'לא עבד.'], toWork: ['ילד באוטובוס שאל אם אני ענן.'],
+      work: ['יעל שאלה אם אני יכול להזיז את השיער.', 'היא לא רואה את המסך שלה.'],
+      goHome: ['ציפור ניסתה לבנות קן בשיער שלי.', 'נתתי לה. היא נראתה עייפה.'], eat: ['במקרר יש עוד מיונז. המון מיונז.', 'חשוד.'],
+      dinner: ['פסטה עם... מיונז.', 'אני מתחיל לחשוד במישהו.'], brushPM: ['הפעם משחה אמיתית. בדקתי פעמיים.'],
+      sleep: ['לילה טוב, שיער.', 'תתנהג יפה מחר.'],
+    },
+    flavor: {
+      sink: ['השיער שלי לא נכנס במראה.'], dani: ['דני: וואו. עשית משהו חדש עם השיער?', 'דני: אל תענה. אני רואה.'],
+      yael: ['יעל: אתה מסתיר לי את המזגן.'], moshe: ['משה: אחי.', 'משה: אחי.', 'משה: אחי.'],
+    },
+  },
+  3: {
+    sub: 'יש חתול.',
+    wake: ['התעוררתי.', 'על החזה שלי יושב חתול.', 'אין לי חתול.', 'עכשיו יש לי חתול.'],
+    tasks: {
+      brushAM: ['החתול צפה בי מצחצח.', 'בשיפוטיות.'], dress: ['החתול ישן לי בתוך הנעל.', 'אז הלכתי עם נעל אחת. הוא שווה את זה.'],
+      toWork: ['החתול שילם על האוטובוס.', 'אני לא יודע איך.'], work: ['החתול ישב על המקלדת.', 'הדוח שלי עכשיו אומר MEOW.', 'הבוס אהב.'],
+      goHome: ['החתול נרדם באוטובוס. סחבתי אותו הביתה.'], eat: ['החתול אכל לי את הסנדוויץ\'.', 'אכלתי את האוכל של החתול.', 'זה הוגן.'],
+      dinner: ['ארוחת ערב לשניים. אני והחתול.', 'הוא השאיר טיפ.'], brushPM: ['ניסיתי לצחצח לחתול שיניים.', 'זו הייתה טעות.'],
+      sleep: ['החתול ישן על הכרית שלי.', 'אני אסתדר.'],
+    },
+    flavor: {
+      dani: ['דני: יש לך חתול?', 'דני: יש לו... כרטיס עובד?'], yael: ['יעל: החתול שלך שלח לי מייל.', 'יעל: עם קבצים מצורפים.'],
+      moshe: ['משה: מיאו.', 'משה: סליחה. זה מדבק.'],
+    },
+  },
+  4: {
+    sub: 'יום טרמפולינה.',
+    wake: ['בוינג!', 'קפצתי מהמיטה. ממש קפצתי.', 'הרצפה... קפיצית?'],
+    tasks: {
+      brushAM: ['ניסיתי לצחצח בזמן שאני קופץ.', 'פגעתי לעצמי באף.'], dress: ['להתלבש באמצע קפיצה זה ספורט אולימפי.'],
+      toWork: ['כל האוטובוס קפץ ביחד.', 'כמו להקת ריקוד. רק פחות מתואמת.'],
+      work: ['הבוס הכריז על "יום טרמפולינה ארגוני".', 'הישיבה הייתה קצרה. כולם קפצו ממנה.'],
+      goHome: ['קפצתי הביתה. חסכתי באוטובוס.'], eat: ['המקרר קפץ אליי. נחמד מצידו.'],
+      dinner: ['הפסטה קפצה מהצלחת.', 'תפסתי אותה בפה. עשר נקודות.'], brushPM: ['בוינג. בוינג. בוינג. צחצחתי.'],
+      sleep: ['איך ישנים כשהמיטה מקפיצה?', 'בוינג... בוינג... בוייי...נג...'],
+    },
+    flavor: {
+      dani: ['דני: בוינג!', 'דני: אני לא מצליח להפסיק. תעזור לי. בוינג!'], yael: ['יעל: (מקלידה תוך כדי קפיצה. מרשים.)'],
+      moshe: ['משה: הקפה שלי נשפך.', 'משה: שוב. בוינג.'],
+    },
+  },
+  5: {
+    sub: 'יום הפוך.',
+    wake: ['!בוקר טוב', '...רגע. למה אני מדבר הפוך?', 'טוב, עכשיו רגיל. אבל הרגליים שלי הולכות אחורה.'],
+    tasks: {
+      brushAM: ['ההשתקפות שלי רקדה בזמן שצחצחתי.', 'אני לא רקדתי. היא כן.'], dress: ['העניבה על הגב.', 'זה האופנה של יום הפוך.'],
+      toWork: ['האוטובוס נסע ברוורס כל הדרך.', 'הגענו מוקדם.'], work: ['היום עובדים מהסוף להתחלה.', 'סיימתי לפני שהתחלתי.'],
+      goHome: ['השמיים ורודים.', 'אף אחד לא מתלונן.'], eat: ['במקרר יש קרטיב חם.', 'מוזר. טעים.'],
+      dinner: ['ארוחת ערב: דגני בוקר.', 'ומחר בבוקר: פסטה. ככה זה ביום הפוך.'], brushPM: ['צחצחתי. ואז שוב, ברוורס.'],
+      sleep: ['!לילה טוב', '...אופס.'],
+    },
+    flavor: {
+      sink: ['ההשתקפות שלי עושה גלגלון.'], dani: ['דני: !םולש', 'דני: זה "שלום" הפוך. אני מתאמן.'],
+      yael: ['יעל: למה אתה הולך אחורה?', 'אני: למה את הולכת קדימה?', 'יעל: ...נקודה טובה.'],
+      moshe: ['משה: היום אני הבוס, והבוס זה אני.', 'משה: כלומר, אותו דבר.'],
+    },
+  },
+  6: {
+    sub: 'צפוי גשם. של ברווזים.',
+    wake: ['קוואק.', 'קוואק?', 'יש ברווז גומי על הראש שלי.', 'ועוד אחד. ועוד אחד.'],
+    tasks: {
+      brushAM: ['בכיור היו שלושה ברווזים.', 'צחצחתי גם להם.'], dress: ['בכיס של החליפה היה ברווז.', 'השארתי אותו. הוא שייך לשם עכשיו.'],
+      toWork: ['תחזית: 80% ברווזים.', 'לקחתי מטרייה. היא מלאה ברווזים.'], work: ['כל מקש במקלדת עושה קוואק.'],
+      goHome: ['הרחוב מלא ברווזים צהובים.', 'אף אחד לא מגיב. כאילו זה רגיל.'], eat: ['במקרר: ברווז. קר.', 'קוואק.'],
+      dinner: ['במרק שוחה ברווז.', 'הוא נראה מאושר. לא הפרעתי לו.'], brushPM: ['הברווזים בכיור עשו לי מקהלה.'],
+      sleep: ['המיטה מלאה ברווזים.', 'זה כמו לישון בבריכה. בלי מים. עם קוואק.'],
+    },
+    flavor: {
+      cooler: ['במכל המים שוחה ברווז.', 'זה עדיין נחשב מים?'], yael: ['יעל: איזה ברווזים?', '(ברווז נוחת לה על הראש. היא ממשיכה לעבוד.)'],
+      dani: ['דני: אספתי כבר 47 ברווזים.', 'דני: אני פותח חנות.'], moshe: ['משה: קוואק.', 'משה: סליחה. גם זה מדבק.'],
+    },
+  },
+  7: {
+    sub: 'משהו באוויר...',
+    wake: ['בוקר טוב.', 'הכול נראה רגיל.', '...חשוד. חשוד מאוד.'],
+    tasks: {
+      brushAM: ['משחת שיניים אמיתית. בלי מיונז.', 'משהו לא בסדר. הכול בסדר מדי.'],
+      dress: ['על הארון מישהו הדביק פתק:', '"אל תאחר הביתה היום!!!"'], toWork: ['כולם באוטובוס מחייכים אליי.', 'הנהג קרץ.'],
+      work: ['דני ויעל לוחשים ומסתכלים עליי.', 'כשאני מתקרב, הם מדברים על מזג האוויר.'],
+      eat: ['במקרר יש עוגה ענקית עם השם שלי.', 'סגרתי מהר. אני כנראה לא אמור לראות את זה.'],
+      dinner: ['ארוחת ערב: עוגה!', 'דני: כל השבוע ניסינו להכין לך מסיבת הפתעה.', 'יעל: המיונז היה ניסוי בקרם לעוגה.',
+        'משה: הברווזים היו טעות בהזמנה של הבלונים.', 'דני: והחתול...', 'דני: החתול זה פשוט החתול.'],
+      brushPM: ['צחצחתי שיניים עם כובע מסיבה.', 'זה היה שבוע מוזר. אבל טוב.'],
+    },
+    flavor: {
+      dani: ['דני: מה? אנחנו לא מתכננים כלום.', 'דני: למה שנתכנן משהו?'], yael: ['יעל: (מסתירה בלון מאחורי הגב.)'],
+      moshe: ['משה: אני לא יודע כלום על שום עוגה.', 'משה: ...איזו עוגה?'],
+    },
+  },
+};
+const FUNNY_SEQ = { 3: 'MEOW', 6: 'QUACK', 7: 'CAKE' };
+const FUNNY_HOOKS = {
+  7: {
+    goHome: async () => {
+      await ride('home', ['כל האוטובוס שר "הוא בחור כארז".', 'אני לא בטוח למי.']);
+      sfx.partyHorn(); S.flags.party = true; S.shakeBurst = .3;
+      $('big').textContent = 'הפתעה!'; await wait(1500); $('big').textContent = '';
+      await say(['דני, יעל ומשה: הפתעה!!!', 'דני: יום הולדת שמח!', 'אני: ...יש לי יום הולדת?', 'יעל: אתה לא זוכר מתי יש לך יום הולדת?', 'אני: ...בטח. ברור. היום.']);
+    },
+  },
+};
+// everyone in funny mode smiles; each day adds its own gag
+function funnyLook(p, isPlayer) {
+  const o = Object.assign({}, p, { smile: !p.grin, faceless: false, eyesWide: false });
+  if (S.funny === 2 && isPlayer) o.bigHair = true;
+  if (S.funny === 4) o.bounce = true;
+  if (S.funny === 7 && S.flags.party) o.partyHat = true;
+  return o;
+}
+
 function judge() {
   for (let d = 1; d <= 8; d++) { const r = S.readLog[d]; if (!r || r.read.size < r.total) return 'hell'; }
   return 'heaven';
 }
 // what heaven and hell do to anyone drawn in them
 function realmLook(p) {
+  if (S.funny) return funnyLook(p, false);
   if (S.realm === 'heaven') return Object.assign({}, p, { halo: true, smile: true, grin: false, faceless: false, eyesWide: false });
   if (S.realm === 'hell') return Object.assign({}, p, { horns: true, skin: '#b8322a', grin: true, smile: false });
   return p;
@@ -476,6 +620,7 @@ function makeTasks(d) {
   return list.map(([key, obj, mini]) => ({ key, obj, mini, done: false }));
 }
 function taskLabel(t) {
+  if (S.funny) return LABELS.base[t.key];
   if (S.day === 7) return 'לצחצח שיניים';
   return (LABELS[S.day] || LABELS.base)[t.key] || LABELS.base[t.key];
 }
@@ -580,6 +725,11 @@ const sfx = {
       noise(.1, .05, 1100, 'bandpass', i * .19);
     }
   },
+  boing() { tone(160, .35, 'sine', .1, 0, 560); tone(560, .25, 'sine', .05, .15, 220); },
+  quack() { tone(500, .12, 'square', .05, 0, 330); tone(470, .14, 'square', .05, .16, 300); },
+  meow() { tone(650, .5, 'triangle', .07, 0, 430); tone(900, .2, 'sine', .03, 0, 650); },
+  partyHorn() { tone(330, .7, 'sawtooth', .06, 0, 680); noise(.5, .05, 2500); [523, 659, 784].forEach((f, i) => tone(f, .5, 'square', .03, .5 + i * .12)); },
+  snore() { noise(1.1, .08, 170, 'lowpass'); tone(85, 1.1, 'sawtooth', .025, 0, 70); },
   soul() { tone(196, 7, 'sine', .05, 0, 784); tone(294, 7, 'sine', .03, .4, 1175); },
   chime() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 1.8, 'sine', .035, i * .14)); },
   sob() { buzz([120, 80, 120]); for (let i = 0; i < 3; i++) { tone(rand(380, 450), .38, 'triangle', .05, i * .4, 240); noise(.3, .03, 900, 'bandpass', i * .4); } },
@@ -596,6 +746,7 @@ function text(c, s, x, y, size, color, align = 'center', font = 'Heebo') {
 }
 
 function sky() {
+  if (S.funny === 5) return ['#ff9ad5', '#ffd6ee'];
   if (S.realm === 'heaven') return ['#fff8e6', '#ffe1a8'];
   if (S.realm === 'hell') return ['#1a0000', '#a8200a'];
   if (S.day === 7) return ['#22000a', '#7d0b16'];
@@ -634,12 +785,15 @@ function look() {
   const L = { dir: p.dir, walk: p.walk, pajamas: !p.dressed, suit: p.dressed, grin: S.day === 7 && S.laughT > 0 };
   if (S.realm === 'heaven') Object.assign(L, { halo: true, smile: true });
   if (S.realm === 'hell') Object.assign(L, { sad: true, skin: '#cfa99b' });
+  if (S.funny) { if (S.funny === 5 && p.moving) L.dir = -p.dir; return funnyLook(L, true); }
   return L;
 }
 
 function drawPerson(c, x, o = {}) {
   const s = o.scale || 1, dir = o.dir || 1, y = o.y ?? FLOOR;
-  c.save(); c.translate(x, y); c.scale(s * dir, s);
+  c.save(); c.translate(x, y);
+  if (o.bounce) c.translate(0, -Math.abs(Math.sin(S.t * 6 + x * .013)) * 16);
+  c.scale(s * dir, s);
   const skin = o.skin || '#e2ab84', shoe = '#1b1b1f';
   const pants = o.pajamas ? '#6a8fbf' : o.suit ? '#262d38' : (o.pants || '#2d3340');
   const sit = o.sit, hip = sit ? -45 : -40, sw = sit ? 0 : Math.sin(o.walk || 0) * 6;
@@ -666,9 +820,12 @@ function drawPerson(c, x, o = {}) {
   circle(c, 0, 35, 4.5, skin); c.restore();
   // head
   const cy = top - 15;
+  if (o.bigHair) { const b = Math.sin(S.t * 12) * 2, hc = o.hair || '#3a2a1e'; [[-12, -10, 15], [14, -12, 15], [2, -26 + b, 19], [-8, -22 + b, 15], [12, -24 + b, 14], [-16, 2, 10]].forEach(([hx, hy, r]) => circle(c, hx, cy + hy, r, hc)); }
   circle(c, 2, cy, 14, skin);
-  c.fillStyle = o.hair || '#3a2a1e'; c.beginPath(); c.arc(2, cy, 14.6, Math.PI * 1.02, Math.PI * 2.02); c.fill();
-  rect(c, -12, cy - 4, 6, 10, o.hair || '#3a2a1e');
+  if (!o.bigHair) {
+    c.fillStyle = o.hair || '#3a2a1e'; c.beginPath(); c.arc(2, cy, 14.6, Math.PI * 1.02, Math.PI * 2.02); c.fill();
+    rect(c, -12, cy - 4, 6, 10, o.hair || '#3a2a1e');
+  }
   if (!o.faceless) {
     if (o.eyesWide) {
       circle(c, 6, cy - 2, 3.4, '#fff'); circle(c, 12.5, cy - 2, 3.4, '#fff');
@@ -686,6 +843,11 @@ function drawPerson(c, x, o = {}) {
     c.fillStyle = '#4a0606';
     c.beginPath(); c.moveTo(-7, cy - 10); c.lineTo(-4, cy - 25); c.lineTo(0, cy - 12); c.fill();
     c.beginPath(); c.moveTo(6, cy - 12); c.lineTo(11, cy - 26); c.lineTo(13, cy - 9); c.fill();
+  }
+  if (o.partyHat) {
+    c.fillStyle = '#ff4fa3'; c.beginPath(); c.moveTo(-8, cy - 11); c.lineTo(12, cy - 11); c.lineTo(3, cy - 40); c.fill();
+    c.strokeStyle = '#ffe066'; c.lineWidth = 2; c.beginPath(); c.moveTo(-4, cy - 18); c.lineTo(9, cy - 20); c.moveTo(-1, cy - 27); c.lineTo(7, cy - 28); c.stroke();
+    circle(c, 3, cy - 41, 3.5, '#ffe066');
   }
   if (o.halo) { c.strokeStyle = '#ffcf4a'; c.lineWidth = 3; c.beginPath(); c.ellipse(2, cy - 23, 12, 4, 0, 0, Math.PI * 2); c.stroke(); }
   c.restore();
@@ -802,7 +964,7 @@ function drawOffice(c) {
 
 function drawBus(c) {
   const d = S.day;
-  c.save(); c.translate(0, Math.sin(S.busT * 30) * 1.2);
+  c.save(); c.translate(0, Math.sin(S.busT * 30) * 1.2 - (S.funny === 4 ? Math.abs(Math.sin(S.t * 6)) * 14 : 0));
   drawSky(c, 0, 90, W, 210, 0, false);
   for (let i = 0; i < 12; i++) {
     const span = 12 * 170, bx = ((i * 170 - S.busT * 300) % span + span) % span - 120, bh = 60 + ((i * 37) % 90);
@@ -827,6 +989,7 @@ function drawBus(c) {
     if (p) drawPerson(c, x - 10, realmLook(Object.assign({ sit: true, dir: 1 }, p)));
   });
   drawPerson(c, 470, Object.assign(look(), { sit: true, walk: 0, dir: 1 }));
+  if (S.funny >= 3) drawCat(c, 530, -1, FLOOR - 52);
   c.restore();
 }
 
@@ -880,7 +1043,7 @@ function drawObj(c, o) {
         drawPerson(c, rx, Object.assign(L, {
           y: my + 175, scale: .9, walk: 0, dir: d >= 5 ? (p.x < x ? -1 : 1) : -p.dir,
           eyesWide: d >= 5, grin: d === 7 || (d === 6 && S.mini), armUp: S.mini && S.mini.kind === 'brush' && d < 5,
-        }));
+        }, S.funny === 5 ? { dir: Math.sin(S.t * 4) > 0 ? 1 : -1, armUp: Math.sin(S.t * 8) > 0, smile: true, eyesWide: false } : {}));
         c.restore();
       }
       c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.moveTo(x - 40, my + 6); c.lineTo(x - 20, my + 6); c.lineTo(x - 40, my + 40); c.fill();
@@ -1022,6 +1185,7 @@ let cssFilter = '';
 const rampE = () => S.flags.ramp == null ? 0 : S.flags.ramp * S.flags.ramp;
 function currentFx() {
   if (S.realm && S.mode !== 'title') return REALM[S.realm].fx;
+  if (S.funny && S.mode !== 'title') return FUNNY_FX;
   if (S.flags.ramp == null) return FX[S.mode === 'title' ? 1 : S.day];
   const e = rampE(), a = FX[1], b = FX[7], o = {};
   for (const k in a) o[k] = a[k] + (b[k] - a[k]) * e;
@@ -1056,6 +1220,7 @@ function render() {
     }
     if (S.mode !== 'title') {
       const p = S.player;
+      if (S.funny) drawFunnyWorld(c, camX);
       if (S.flags.asleep) drawSleeper(c, e); else drawPerson(c, p.x, look());
       if (S.flags.ghost) drawGhost(c);
       if (S.laughT > 0) text(c, 'הא הא הא', p.x + rand(-2, 2), FLOOR - 140 + rand(-2, 2), 18, '#ff4a3a', 'center', 'Karantina');
@@ -1068,6 +1233,7 @@ function render() {
   if (S.realm && S.mode !== 'title') drawRealmFloor(c, camX);
   c.restore();
   if (S.realm && S.mode !== 'title') drawRealmSky(c);
+  if (S.funny && S.mode !== 'title') drawFunnySky(c);
   // night tint
   if (S.time === 'night' && S.scene !== 'bus' && d < 6 && S.realm !== 'heaven') { c.fillStyle = 'rgba(15,20,55,.28)'; c.fillRect(0, 0, W, H); }
   if (S.scene === 'office' && (S.flags.officeEmpty || d >= 5) && Math.random() < .06) { c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, 0, W, H); }
@@ -1101,7 +1267,7 @@ function drawSleeper(c, e) {
   const b = obj('bed'), x0 = b.x - b.w / 2;
   c.save(); c.translate(x0 + 150, FLOOR - 88); c.rotate(-Math.PI / 2);
   drawPerson(c, 0, Object.assign({ y: 0, pajamas: true, dir: 1, eyesWide: e > .3, grin: e > .7 },
-    S.realm === 'heaven' ? { halo: true, smile: true } : S.realm === 'hell' ? { sad: true, skin: '#cfa99b' } : {}));
+    S.realm === 'heaven' ? { halo: true, smile: true } : S.realm === 'hell' ? { sad: true, skin: '#cfa99b' } : S.funny ? { smile: true, partyHat: !!S.flags.party } : {}));
   c.restore();
   if (S.flags.crying) for (let i = 0; i < 3; i++) {
     const ph = (S.t * .9 + i / 3) % 1;
@@ -1157,6 +1323,55 @@ function drawRealmSky(c) {
     }
   }
 }
+// ---- funny mode drawing: the cat, rubber ducks, the surprise party
+function drawCat(c, x, dir, y = FLOOR) {
+  const wag = Math.sin(S.t * 5) * 6;
+  c.save(); c.translate(x, y); c.scale(dir, 1);
+  c.strokeStyle = '#e08a2e'; c.lineWidth = 4; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(-16, -14); c.quadraticCurveTo(-30, -24, -26 + wag, -38); c.stroke();
+  rect(c, -12, -8, 4, 8, '#e08a2e'); rect(c, 8, -8, 4, 8, '#e08a2e');
+  c.fillStyle = '#f0a040'; c.beginPath(); c.ellipse(0, -14, 18, 10, 0, 0, Math.PI * 2); c.fill();
+  circle(c, 16, -26, 10, '#f0a040');
+  c.beginPath(); c.moveTo(9, -32); c.lineTo(11, -42); c.lineTo(16, -34); c.moveTo(18, -34); c.lineTo(23, -42); c.lineTo(24, -31); c.fill();
+  rect(c, 17, -29, 2, 3, '#222'); rect(c, 22, -29, 2, 3, '#222');
+  if (S.funny === 7 && S.flags.party) { c.fillStyle = '#4fc3ff'; c.beginPath(); c.moveTo(10, -34); c.lineTo(22, -34); c.lineTo(16, -54); c.fill(); circle(c, 16, -55, 2.5, '#ffe066'); }
+  c.restore();
+}
+function drawDuck(c, x, y, s, flip = 1) {
+  c.save(); c.translate(x, y); c.scale(flip, 1);
+  c.fillStyle = '#ffd23f'; c.beginPath(); c.ellipse(0, 0, s * 1.2, s * .8, 0, 0, Math.PI * 2); c.fill();
+  circle(c, s * .8, -s * .8, s * .55, '#ffd23f');
+  c.fillStyle = '#ff8a1f'; c.beginPath(); c.moveTo(s * 1.25, -s * .85); c.lineTo(s * 1.8, -s * .7); c.lineTo(s * 1.25, -s * .55); c.fill();
+  circle(c, s * .95, -s * .95, s * .1 + .6, '#222');
+  c.restore();
+}
+const PARTY_COLORS = ['#ff4fa3', '#ffe066', '#4fc3ff', '#7ee081', '#b48cff'];
+function drawFunnyWorld(c, camX) {
+  if (S.funny >= 3 && S.scene !== 'bus') drawCat(c, S.cat.x, S.player.x < S.cat.x ? -1 : 1);
+  if (S.funny === 6) {
+    const w = SCENES[S.scene].w;
+    for (let i = 0; i < 30; i++) drawDuck(c, (i * 157 + 40) % w, FLOOR + 16 + (i % 3) * 9, 9 + i % 3, i % 2 ? 1 : -1);
+  }
+  if (S.funny === 7 && S.flags.party && S.scene === 'home') {
+    for (let i = 0; i < 9; i++) {
+      const bx = 1380 + i * 70, by = 120 + Math.sin(S.t * 1.5 + i) * 8 + (i % 3) * 18;
+      c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(bx, by + 22); c.lineTo(bx + Math.sin(S.t + i) * 4, by + 90); c.stroke();
+      c.fillStyle = PARTY_COLORS[i % 5]; c.beginPath(); c.ellipse(bx, by, 17, 22, 0, 0, Math.PI * 2); c.fill();
+    }
+    [[1740, '#3f6fb5', '#2a2018'], [1820, '#b5563f', '#7a3a1a'], [1900, '#4f8a52', '#2a2018']].forEach(([gx, shirt, hair]) =>
+      drawPerson(c, gx, { shirt, hair, dir: S.player.x < gx ? -1 : 1, smile: true, partyHat: true, bounce: true }));
+  }
+}
+function drawFunnySky(c) {
+  if (S.funny === 6) for (let i = 0; i < 14; i++) {
+    const x = (i * 131 + Math.sin(S.t + i) * 15) % W, y = (S.t * (60 + i % 4 * 20) + i * 71) % (H + 60) - 30;
+    drawDuck(c, x, y, 9, i % 2 ? 1 : -1);
+  }
+  if (S.funny === 7 && S.flags.party && S.scene === 'home') for (let i = 0; i < 70; i++) {
+    const x = (i * 97 + Math.sin(S.t * 2 + i) * 18) % W, y = (S.t * (50 + i % 7 * 14) + i * 37) % (H + 20) - 10;
+    c.save(); c.translate(x, y); c.rotate(S.t * 4 + i); c.fillStyle = PARTY_COLORS[i % 5]; c.fillRect(-4, -2, 8, 4); c.restore();
+  }
+}
 const CRACK = [];
 function drawCrack(c) {
   if (!CRACK.length) {
@@ -1206,7 +1421,7 @@ function updateHUD() {
 // how many of today's objects and people the player has stopped to look at
 function updateRead() {
   const r = S.readLog[shownDay()], el = $('hudRead');
-  el.hidden = !!S.realm || !r;
+  el.hidden = !!S.realm || !!S.funny || !r;
   if (el.hidden) return;
   el.textContent = `שמתי לב: ${r.read.size}/${r.total}`;
   el.classList.toggle('all', r.read.size >= r.total);
@@ -1269,7 +1484,7 @@ function runMini(kind) {
     const d = S.day, m = { kind, res, n: 0 };
     if (kind === 'brush') { m.need = d === 7 ? 16 : 10; m.last = null; }
     else {
-      m.seq = d === 6 ? 'WAKEUP' : d === 7 ? 'HELPME' : Array.from({ length: d >= 5 ? 9 : 6 }, () => 'ASDFJKL'[Math.floor(Math.random() * 7)]).join('');
+      m.seq = S.funny ? (FUNNY_SEQ[S.funny] || Array.from({ length: 6 }, () => 'ASDFJKL'[Math.floor(Math.random() * 7)]).join('')) : d === 6 ? 'WAKEUP' : d === 7 ? 'HELPME' : Array.from({ length: d >= 5 ? 9 : 6 }, () => 'ASDFJKL'[Math.floor(Math.random() * 7)]).join('');
       m.need = m.seq.length;
     }
     S.mini = m; S.mode = 'mini'; $('mini').hidden = false; document.body.classList.add('in-mini'); renderMini();
@@ -1382,6 +1597,7 @@ async function travel(o) {
 function flavor(o) {
   const d = S.day;
   if (S.realm) { const F = REALM[S.realm].flavor[o.id] || REALM[S.realm].flavor[o.type]; if (F) return F; }
+  if (S.funny) { const F = FUNNY[S.funny].flavor[o.id] || FUNNY[S.funny].flavor[o.type]; if (F) return F; }
   if (['yael', 'dani', 'moshe'].includes(o.id)) {
     if (S.flags.officeEmpty) return ['הכיסא מסתובב.', 'אין פה אף אחד.'];
     if (o.id === 'moshe' && d >= 3 && d < 7) return ['שולחן ריק.', 'מי ישב פה?', '...אף אחד, כנראה.'];
@@ -1443,12 +1659,12 @@ async function doTask(t) {
   TIMEFX[t.key]?.();
   if (t.key === 'dress') S.player.dressed = true;
   updateHUD(); sfx.ding();
-  const lines = S.realm ? REALM[S.realm].tasks[t.key] : (TEXT[t.key] || {})[S.day];
-  const hook = (HOOKS[S.day] || {})[t.key];
+  const lines = S.realm ? REALM[S.realm].tasks[t.key] : S.funny ? FUNNY[S.funny].tasks[t.key] : (TEXT[t.key] || {})[S.day];
+  const hook = S.funny ? (FUNNY_HOOKS[S.funny] || {})[t.key] : (HOOKS[S.day] || {})[t.key];
   if (hook) await hook(lines);
   else if (t.key === 'toWork') await ride('office', lines);
   else if (t.key === 'goHome') await ride('home', lines);
-  else if (t.key === 'sleep') { if (S.day === 7) return finale(); if (S.realm) return realmEnding(); if (S.loop) return loopEnding(); if (lines) await say(lines); return nextDay(); }
+  else if (t.key === 'sleep') { if (S.funny) { if (S.funny === 7) return funnyEnding(); if (lines) await say(lines); return nextFunnyDay(); } if (S.day === 7) return finale(); if (S.realm) return realmEnding(); if (S.loop) return loopEnding(); if (lines) await say(lines); return nextDay(); }
   else if (lines) await say(lines);
   S.mode = 'play';
 }
@@ -1456,8 +1672,9 @@ async function doTask(t) {
 async function tryInteract() {
   const o = nearObj(); if (!o) return;
   S.mode = 'cut'; S.autoWalk = null;
-  const log = !S.realm && S.readLog[shownDay()];
+  const log = !S.realm && !S.funny && S.readLog[shownDay()];
   if (log) { log.read.add(o.id); updateRead(); }
+  if (S.funny === 4) sfx.boing(); else if (S.funny === 6) sfx.quack(); else if (S.funny === 3 && Math.random() < .35) sfx.meow();
   try {
     const t = curTask();
     if (t && t.obj === o.id) return await doTask(t);
@@ -1467,28 +1684,30 @@ async function tryInteract() {
 }
 
 // day 8 replays day 1 underneath (S.loop), only the number on screen says 8
-const shownDay = () => S.realm ? 9 : S.loop ? 8 : S.day;
+const shownDay = () => S.funny || (S.realm ? 9 : S.loop ? 8 : S.day);
 const WAKE_LOOP = ['בררר! השעון המעורר.', 'איזה חלום מוזר היה לי.', 'טוב. עוד יום רגיל.'];
 async function startDay(n, opts) {
   S.mode = 'cut';
-  S.loop = !!(opts && opts.loop); S.realm = (opts && opts.realm) || null; S.zz = [];
+  S.loop = !!(opts && opts.loop); S.realm = (opts && opts.realm) || null; S.funny = (opts && opts.funny) || 0; S.zz = [];
   S.day = n; S.tasks = makeTasks(n); S.idx = 0; S.scene = 'home'; S.time = 'morning'; setClock('07:00');
   S.flags = {}; S.objs = buildObjects(n); S.npcs = makeNpcs(n); S.hist = []; S.laughT = 0; S.autoWalk = null;
   Object.assign(S.player, { x: 290, dir: 1, walk: 0, dressed: false });
+  S.cat = { x: 200 };
   S.invertUntil = 0; S.nextInvert = S.t + 10; S.nextWhisper = S.t + 6; S.nextLaugh = S.t + 8;
   CRACK.length = 0;
   $('fade').style.transitionDuration = '0ms'; $('fade').style.opacity = 1;
-  if (!S.realm) S.readLog[shownDay()] = { read: new Set(), total: S.objs.filter(o => o.name).length };
-  $('hud').hidden = false; updateHUD(); setDrone(S.realm ? 0 : n);
+  if (!S.realm && !S.funny) S.readLog[shownDay()] = { read: new Set(), total: S.objs.filter(o => o.name).length };
+  $('hud').hidden = false; updateHUD(); setDrone(S.realm || S.funny ? 0 : n);
   await wait(300);
-  await card('יום ' + shownDay(), S.realm ? REALM[S.realm].name : S.loop ? 'עוד יום רגיל.' : SUB[n], 2300);
+  await card('יום ' + shownDay(), S.funny ? FUNNY[S.funny].sub : S.realm ? REALM[S.realm].name : S.loop ? 'עוד יום רגיל.' : SUB[n], 2300);
   await fadeIn(900);
-  sfx.alarm();
-  await say((S.realm ? REALM[S.realm].wake : S.loop ? WAKE_LOOP : WAKE[n]).map(l => l !== 'HINT' ? l : S.input === 'touch'
+  if (S.funny === 1) sfx.snore(); else if (S.funny === 4) sfx.boing(); else if (S.funny === 6) sfx.quack(); else if (S.funny === 3) sfx.meow(); else sfx.alarm();
+  await say((S.funny ? FUNNY[S.funny].wake : S.realm ? REALM[S.realm].wake : S.loop ? WAKE_LOOP : WAKE[n]).map(l => l !== 'HINT' ? l : S.input === 'touch'
     ? '(◀ ▶ כדי ללכת, ✋ כדי לעשות דברים. אפשר גם פשוט לגעת בדברים על המסך)'
     : '(חיצים כדי ללכת, E כדי לעשות דברים)'));
   S.mode = 'play';
 }
+async function nextFunnyDay() { await fadeOut(1400); await startDay(1, { funny: S.funny + 1 }); }
 async function nextDay() { await fadeOut(1400); await startDay(S.day + 1); }
 
 async function finale() {
@@ -1545,6 +1764,25 @@ async function soulLeaves() {
   const realm = judge();
   await card('', realm === 'heaven' ? 'עצרת. הקשבת לכולם. שמת לב לכל דבר.' : 'עברת ליד יותר מדי דברים בלי לעצור.', 3400);
   await startDay(1, { realm });
+}
+
+// funny mode, day 7 bedtime: happy, party hat on, the end
+async function funnyEnding() {
+  S.mode = 'cut';
+  await say(['איזה שבוע מטורף.', 'אבל איזה כיף.', 'לילה טוב, חתול.']);
+  sfx.meow();
+  await fadeOut(900);
+  S.player.x = obj('bed').x; S.cat.x = obj('bed').x + 140; S.flags.asleep = true; S.zz = []; S.flags.zzT = 0; S.flags.breathT = 0;
+  await fadeIn(1400);
+  await wait(5500);
+  await fadeOut(1800);
+  $('hud').hidden = true;
+  const title = 'הסוף המצחיק', line = 'מזל טוב! (אף אחד לא יגיד לו שהיום הולדת שלו בכלל בחודש הבא.)';
+  sfx.partyHorn();
+  await card(title, line, 3800);
+  $('endTitle').textContent = title; $('endText').textContent = line;
+  S.mode = 'end';
+  $('end').hidden = false; $('againBtn').focus();
 }
 
 // day 9 bedtime: a happy sleep in heaven, crying in hell
@@ -1609,12 +1847,16 @@ function update(dt) {
     else if (n.v) { n.x += n.v * dt; n.walk += dt * 9; if (n.x < -60) n.x = 1860; if (n.x > 1860) n.x = -60; }
   }
   if (S.flags.ghost && !S.dialog) S.flags.ghost.t += dt;
-  if (S.flags.asleep && S.realm) {
+  if (S.funny >= 3 && S.cat && !S.flags.asleep) {
+    const tx = S.player.x - 48 * S.player.dir;
+    if (Math.abs(tx - S.cat.x) > 500) S.cat.x = tx; else S.cat.x += (tx - S.cat.x) * Math.min(1, dt * 3);
+  }
+  if (S.flags.asleep && (S.realm || S.funny)) {
     if ((S.flags.breathT -= dt) <= 0) { if (S.flags.crying) sfx.sob(); else sfx.chime(); S.flags.breathT = S.flags.crying ? 1.8 : 2.2; }
     if (!S.flags.crying && (S.flags.zzT -= dt) <= 0) {
-      const b = obj('bed'), heart = Math.random() < .4, n = S.zz.length;
+      const b = obj('bed'), extra = S.realm === 'heaven' ? '♥' : '♪', heart = Math.random() < .4, n = S.zz.length;
       S.zz.push({ x: b.x - b.w / 2 + 60, y: FLOOR - 112, age: 0, life: 3.6, seed: rand(0, 6), odd: heart,
-        txt: heart ? '♥' : ['z', 'Z', 'Z'][n % 3], size: heart ? 30 : [24, 34, 46][n % 3] });
+        txt: heart ? extra : ['z', 'Z', 'Z'][n % 3], size: heart ? 30 : [24, 34, 46][n % 3] });
       S.flags.zzT = 1;
     }
     for (const z of S.zz) { z.age += dt; z.y -= dt * 20; z.x += dt * 6; }
@@ -1767,13 +2009,15 @@ function applyInputMode() {
 function begin(day) {
   initAudio();
   $('title').hidden = true; $('end').hidden = true;
-  S.readLog = {};
+  S.readLog = {}; S.lastStart = day;
+  if (typeof day === 'string' && day.startsWith('funny')) return startDay(1, { funny: +day.slice(5) || 1 });
   if (day === 'heaven' || day === 'hell') startDay(1, { realm: day });
   else if (day === 9) startDay(1, { realm: judge() });
   else if (day === 8) startDay(1, { loop: true }); else startDay(day);
 }
 $('startBtn').addEventListener('click', () => begin(1));
-$('againBtn').addEventListener('click', () => begin(1));
+$('againBtn').addEventListener('click', () => begin(typeof S.lastStart === 'string' && S.lastStart.startsWith('funny') ? 'funny' : 1));
+$('funnyBtn').addEventListener('click', () => begin('funny'));
 [1, 2, 3, 4, 5, 6, 7, 8, 'heaven', 'hell'].forEach(i => {
   const b = document.createElement('button'); b.type = 'button';
   b.textContent = i === 'heaven' ? 'יום 9: גן עדן' : i === 'hell' ? 'יום 9: גיהנום' : 'יום ' + i;
@@ -1783,7 +2027,7 @@ $('againBtn').addEventListener('click', () => begin(1));
 // the day picker is a shortcut for replaying; show it only after the game was finished once, or with #days
 let unlocked = false;
 try { unlocked = localStorage.getItem('seven-days-done') === '1'; } catch (e) {}
-const hashDay = /^#?day([1-9])$/.exec(location.hash) || /^#?(heaven|hell)$/.exec(location.hash);
+const hashDay = /^#?day([1-9])$/.exec(location.hash) || /^#?(heaven|hell|funny[1-7]?)$/.exec(location.hash);
 $('daySel').hidden = !(unlocked || location.hash === '#days' || hashDay);
 
 // Portrait phones: the game sits on top, the to-do note, dialog and mini games move into
